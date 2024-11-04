@@ -21,7 +21,10 @@
 *.pem
 /public
 /design
+
 desktop.ini
+*.ini
+**/desktop.ini
 
 # debug
 npm-debug.log*
