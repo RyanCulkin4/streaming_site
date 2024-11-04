@@ -49,11 +49,11 @@ Make sure you have the following installed:
     npm install
     ```
 
-3a. Run the Client using the following command:
+3. Run the Client using the following command:
     ```bash
     npm run dev
     ```
-3b. Run the Web Server using the following command: 
+4. Run the Web Server using the following command: 
     NOTE - Requires that you have created a .env and connected it to a PostgreSQL Database (Working On Publishing my db skema for you to play with it)
     ```bash
     npm run sdev
