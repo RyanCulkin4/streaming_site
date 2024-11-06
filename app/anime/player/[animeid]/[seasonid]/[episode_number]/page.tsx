@@ -114,7 +114,7 @@ export default function AnimePlayer() {
         {/* Main Content */}
         <main>
           {/* Video Player */}
-          <VideoPlayer animeid={animeData.animeid} seasonid={seasonid} episode_number={episode_number} isControlsVisible={isControlsVisible}/>
+          <VideoPlayer animeData={animeData} animeid={animeData.animeid} seasonid={seasonid} episode_number={episode_number} isControlsVisible={isControlsVisible}/>
           {/* Anime Details */}
           <section className="p-6 md:p-12">
             <h1 className="text-4xl font-bold mb-2">{animeData.native_title}</h1>

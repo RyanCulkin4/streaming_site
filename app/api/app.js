@@ -223,7 +223,7 @@ app.get('/query/:toQuery/e/:excludeQuery/:returns', checkToken, async (req, res)
         'videos',
         'website_variables'
     ];
- 
+
     if (!allowedTables.includes(toQuery)) {
         return res.status(400).json({ message: 'Invalid query type' });
     }
@@ -445,7 +445,10 @@ app.post('/bookmarks/:userid/:contentid/:mediatype', async (req, res) => {
 
 
 app.get('/episodes/:animeid/:seasonid/:episode_number/:next', async (req, res) => {
-    const { animeid, seasonid, episode_number, next } = req.params;
+    const animeid = Number(req.params.animeid);
+    const seasonid = Number(req.params.seasonid);
+    const episode_number = Number(req.params.episode_number);
+    const next = Number(req.params.next);
     const direction = parseInt(next);
 
     try {
@@ -455,15 +458,17 @@ app.get('/episodes/:animeid/:seasonid/:episode_number/:next', async (req, res) =
             WHERE seasonid = $1 
             AND episode_number = $2
         `;
-        let values = [seasonid, parseInt(episode_number) + direction];
+
 
         // Step 2: If there's no episode in the same season, check for adjacent seasons
-        const result = await db.query(query, values);
-        let episode = result.rows[0];
+        const result = await db.query(query, [seasonid, parseInt(episode_number) + direction]);
+        const episode = result.rows[0]
 
+        console.log(episode)
+        
         if (!episode) {
             const newSeasonNumber = parseInt(seasonid) + (direction > 0 ? 1 : -1);
-            
+
             // Step 3: Get the first or last episode in the adjacent season
             query = `
                 SELECT * FROM anime_season_episodes 

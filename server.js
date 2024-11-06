@@ -16,6 +16,7 @@ Updates All Anime's average rating and total ratings every 10 mins
 Probobly a better way to do this but at least this works
 
 */
+
 async function updateAllAnimeRatings() {
     const updateQuery = `
         WITH rating_stats AS (
@@ -33,12 +34,18 @@ async function updateAllAnimeRatings() {
         WHERE anime.animeid = rating_stats.animeid;
     `;
 
+    const startTime = Date.now(); // Capture the start time
+
     try {
         await db.query(updateQuery);
-        console.log('All anime ratings have been updated successfully.');
+        
+        const endTime = Date.now(); // Capture the end time
+        const duration = (endTime - startTime) / 1000; // Calculate duration in seconds
+
+        console.log(`All anime ratings have been updated successfully in ${duration.toFixed(3)} seconds.`);
     } catch (error) {
         console.error('Error updating anime ratings', error);
-        throw error;  // Handle the error as needed
+        throw error; // Handle the error as needed
     }
 }
 

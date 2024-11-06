@@ -166,38 +166,6 @@ export const togglePlay = (videoRef: React.RefObject<HTMLVideoElement>, setIsPla
     }
 };
 
-
-export const toggleShow = async (
-    type: string,
-    next: number,
-    animeid: number,
-    seasonid: number,
-    season_number: number,
-    episode_number: number,
-) => {
-    const router = useRouter();
-
-    try {
-        const response = await fetch(`http://localhost:3001/episodes/${animeid}/${seasonid}/${episode_number}/${next}`);
-        if (!response.ok) {
-            throw new Error(`Error: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-
-        // Assuming `data` contains the new season and episode details for redirection
-        const { newSeasonId, newEpisodeNumber } = data;
-        if (newSeasonId && newEpisodeNumber) {
-            // Redirect to the new URL
-            router.push(`/anime/player/${animeid}/${season_number}/${episode_number}`);
-        } else {
-            console.log('No next episode available');
-        }
-    } catch (error) {
-        console.error('Failed to toggle episode:', error);
-    }
-};
-
 export const commentLikeEvent = () => {
     // Implement review creation logic here
     console.log("Create review clicked")

@@ -5,16 +5,19 @@ import { Slider } from "@/components/ui/slider";
 import { Popover, PopoverContent, PopoverTrigger } from "@radix-ui/react-popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@radix-ui/react-select";
 import { Anime, Episodes } from "@/app/api/types/types";
-import { formatTime, loadAnime, loadData, loadEpisode, toggleShow, useKeyPress } from "./reusableCode";
+import { formatTime, loadAnime, loadData, loadEpisode, useKeyPress } from "./reusableCode";
+import { useRouter } from 'next/navigation';
+
 
 interface VideoPlayerProps {
     animeid: number;
     seasonid: number;
     episode_number: number;
-    isControlsVisible: boolean
+    isControlsVisible: boolean;
+    animeData: Anime;
 }
 
-export const VideoPlayer: React.FC<VideoPlayerProps> = ({ animeid, seasonid, episode_number, isControlsVisible }) => {
+export const VideoPlayer: React.FC<VideoPlayerProps> = ({ animeData, animeid, seasonid, episode_number, isControlsVisible }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isPlaying, setIsPlaying] = useState(true);
     const [isMuted, setIsMuted] = useState(false);
@@ -25,7 +28,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ animeid, seasonid, epi
     const playerRef = useRef<HTMLDivElement>(null);
     const headerRef = useRef<HTMLElement>(null);
     const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const [animeData, setAnimeData] = useState<Anime | null>(null);
     const [episodesData, setEpisodesData] = useState<Episodes[]>();
     const [specificEpisode, setSpecificEpisode] = useState<Episodes>();
     const [quality, setQuality] = useState('1080p');
@@ -35,10 +37,17 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ animeid, seasonid, epi
     const [userid, setUserid] = useState<number | undefined>()
     const [lastActionTime, setLastActionTime] = useState(0);
 
+    const [isClient, setIsClient] = useState(false); // Track if we're on the client
+    const router = useRouter();
+
+    useEffect(() => {
+        setIsClient(true); // Set to true once the component is mounted
+    }, []);
+
     useEffect(() => {
         // Check if the current time is a new 5-second interval
         if (currentTime >= lastActionTime + 10) {
-            
+
             setLastActionTime(currentTime); // Update the last action time
         }
     }, [currentTime, lastActionTime]);
@@ -140,6 +149,34 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ animeid, seasonid, epi
             setPercentage((newTime / video.duration) * 100); // Update seek bar percentage
         }
     };
+
+    const next_button = async (next: number) => {
+        try {
+            const response = await fetch(`http://localhost:3001/episodes/${animeid}/${seasonid}/${episode_number}/${next}`);
+            console.log(animeid, seasonid, episode_number, next, animeData?.type);
+
+            if (!response.ok) {
+                throw new Error(`Error: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log(data);
+
+            // Extract new season and episode from the response
+            const newSeasonId = data.episode?.seasonid;
+            const newEpisodeNumber = data.episode?.episode_number;
+
+            if (newSeasonId && newEpisodeNumber) {
+                // Navigate to the new episode using router.push
+                await router.push(`/${animeData?.type}/player/${animeid}/${newSeasonId}/${newEpisodeNumber}`);
+            } else {
+                console.log('No next episode available');
+            }
+        } catch (error) {
+            console.error('Failed to toggle episode:', error);
+        }
+    };
+
 
     return (
 
@@ -246,7 +283,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ animeid, seasonid, epi
                     <div className="flex items-center justify-center mt-2">
                         <Button
                             // Previous Episode
-                            onClick={togglePlay}
+                            onClick={() => next_button(-1)}
                             size="icon"
                             variant="ghost"
                             className="text-white hover:bg-white/20"
@@ -282,7 +319,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ animeid, seasonid, epi
                         </Button>
                         <Button
                             // Next Episode
-                            onClick={() =>toggleShow('anime', 1, animeid, seasonid, episode_number)}
+                            onClick={() => next_button(1)}
                             size="icon"
                             variant="ghost"
                             className="text-white hover:bg-white/20"
