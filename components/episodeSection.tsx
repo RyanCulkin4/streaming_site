@@ -14,7 +14,7 @@ import { commentLikeEvent, loadAnime, loadData, loadReviews, websiteInitialLoad,
 export const EpisodeSection: React.FC<{ animeData: Anime }> = ({ animeData }) => {
 
     const [episodesData, setEpisodesData] = useState<Episodes[]>([]);
-    const [reviewsData, setReviewsData] = useState<Reviews[]>([]);
+    const [reviewsData, setReviewsData] = useState<Reviews[] | null>([]);
     const allSeasons = Array.from(new Set(episodesData.map((ep) => ep.seasonid)));
     const [selectedSeason, setSelectedSeason] = useState<number>(1); // Default to the first season
     const [loading, setLoading] = useState(true)
@@ -26,7 +26,11 @@ export const EpisodeSection: React.FC<{ animeData: Anime }> = ({ animeData }) =>
                     setEpisodesData(data)
                 }
             }),
-            () => loadReviews(animeData.animeid).then(data => setReviewsData(data)),
+            () => loadReviews(animeData.animeid).then(data => {
+                if (data) {
+                    setReviewsData(data)
+                }
+            })
         ]).then(() => setLoading(false));
     }, []);
 
@@ -38,8 +42,8 @@ export const EpisodeSection: React.FC<{ animeData: Anime }> = ({ animeData }) =>
         { name: "Aria Starlight", role: "Captain Zara Vega", avatar: "/placeholder.svg?height=96&width=96", memberid: 1 },
     ];
 
+    console.log(reviewsData)
     return (
-
         <section className="p-6 md:p-12">
             <Tabs defaultValue="episodes" className="w-full">
                 <TabsList>
@@ -78,11 +82,11 @@ export const EpisodeSection: React.FC<{ animeData: Anime }> = ({ animeData }) =>
 
                         {/* Render Seasons and their episodes based on selectedSeason */}
                         {episodesData
-                            .filter(episode => episode.seasonid === selectedSeason) // Filter episodes by selected season
-                            .sort((a, b) => a.episode_number - b.episode_number) // Sort episodes by episode_number
-                            .map((episode) =>
-                                <Link href={`/anime/player/${animeData.animeid}/${selectedSeason}/${episode.episode_number}`}>
-                                    <div key={episode.episode_number} className="relative group">
+                            .filter(episode => episode.seasonid === selectedSeason)
+                            .sort((a, b) => a.episode_number - b.episode_number)
+                            .map((episode) => (
+                                <Link key={episode.episodeid} href={`/anime/player/${episode.episodeid}`}>
+                                    <div className="relative group">
                                         <div className="relative w-full pb-[56.25%]"> {/* 16:9 aspect ratio */}
                                             <Image
                                                 src={`/anime/anime_shows/${animeData.animeid}/${episode.seasonid}/${episode.episode_number}thm.jpg`}
@@ -109,7 +113,8 @@ export const EpisodeSection: React.FC<{ animeData: Anime }> = ({ animeData }) =>
                                         </div>
                                     </div>
                                 </Link>
-                            )}
+                            ))
+                        }
                     </div>
                 </TabsContent>
                 <TabsContent value="details">
@@ -131,8 +136,8 @@ export const EpisodeSection: React.FC<{ animeData: Anime }> = ({ animeData }) =>
                 <TabsContent value="cast">
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                         {cast.map((member) => (
-                            <Link href={`/user/about/${member.memberid}`}>
-                                <div key={member.name} className="flex items-center space-x-4">
+                            <Link key={member.memberid} href={`/user/about/${member.memberid}`}>
+                                <div className="flex items-center space-x-4">
                                     <Avatar className="w-16 h-16">
                                         <AvatarImage src={member.avatar} alt={member.name} />
                                         <AvatarFallback>{member.name[0]}</AvatarFallback>
@@ -147,7 +152,7 @@ export const EpisodeSection: React.FC<{ animeData: Anime }> = ({ animeData }) =>
                     </div>
                 </TabsContent>
                 <TabsContent value="reviews">
-                    {reviewsData.length > 0 ? (
+                    {reviewsData ?(
                         <div className="space-y-6">
                             {reviewsData.map((review) => (
                                 <div key={review.reviewid} className="bg-gray-800 p-6 rounded-lg">

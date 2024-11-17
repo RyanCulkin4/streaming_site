@@ -139,10 +139,14 @@ GROUP BY
 
     try {
         const result = await db.query(query, [animeid]);
-        //console.log(result.rows);
-        return res.json(result.rows);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Anime not found' });
+        }
+
+        // Extract the first item from the array if there are results
+        return res.json(result.rows[0]);
     } catch (error) {
-        console.error('Database query error:', error);
+        console.log('Database query error:', error);
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 });
@@ -183,31 +187,41 @@ router.get('/:animeid/episodes', async (req, res) => {
     }
 });
 
-router.get('/:animeid/:episodenumber', async (req, res) => {
-    const animeid = req.params.animeid;
-    const episodenumber = req.params.episodenumber;
+
+router.get('/e/:episodeid', async (req, res) => {
+    const episodeid = parseInt(req.params.episodeid, 10);
+
+    // Validate the parsed values
+    if (isNaN(episodeid)) {
+        return res.status(400).json({ error: 'Invalid episode ID.' });
+    }
 
     const query = `
         SELECT 
-            anime_season_episodes.*
+            anime_season_episodes.*,
+            anime_season.season_number AS season_number_display
         FROM 
-            anime_season
+            anime_season_episodes
         JOIN 
-            anime_season_episodes ON anime_season.seasonid = anime_season_episodes.seasonid
+            anime_season
+        ON 
+            anime_season_episodes.seasonid = anime_season.seasonid
         WHERE 
-            anime_season.animeid = $1      -- Filter for the given anime ID
-            AND anime_season_episodes.episodeid = $2
+            anime_season_episodes.episodeid = $1
     `;
 
     try {
-        const result = await db.query(query, [animeid, episodenumber]);
-        //console.log(result.rows);
+        const result = await db.query(query, [episodeid]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Episode not found for the given anime ID and episode ID.' });
+        }
         return res.json(result.rows);
     } catch (error) {
         console.error('Database query error:', error);
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+
 
 router.get('/:animeid/first', async (req, res) => {
     const animeid = req.params.animeid;
@@ -244,18 +258,20 @@ router.get('/:animeid/reviews', async (req, res) => {
 
     const query = `
         SELECT 
-            *
+            anime_reviews.*, 
+            user_ratings.rating AS rating
         FROM 
             anime_reviews
+        LEFT JOIN 
+            user_ratings ON anime_reviews.userid = user_ratings.userid AND anime_reviews.animeid = user_ratings.animeid
         WHERE 
             anime_reviews.animeid = $1
     `;
 
     try {
         const result = await db.query(query, [animeid]);
-        //console.log(result.rows);
         return res.json(result.rows);
-    } catch (error) {
+        } catch (error) {
         console.error('Database query error:', error);
         return res.status(500).json({ error: 'Internal Server Error' });
     }
@@ -373,6 +389,46 @@ router.get('/:animeid/likes', async (req, res) => {
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+
+router.post('/useractivity', async (req, res) => {
+    const { userid, child_content, parent_content, mediatype, stopping_point } = req.body;
+
+    const findQuery = `
+        SELECT * 
+        FROM user_activity 
+        WHERE userid = $1 AND parent_content = $2 AND mediatype = $3
+    `;
+
+    const insertQuery = `
+        INSERT INTO user_activity (userid, child_content, parent_content, mediatype, stopping_point) 
+        VALUES ($1, $2, $3, $4, $5)
+    `;
+
+    const updateQuery = `
+        UPDATE user_activity 
+        SET child_content = $2, stopping_point = $5
+        WHERE userid = $1 AND parent_content = $3 AND mediatype = $4
+    `;
+
+    try {
+        // Check if the user already has an entry for this content (matching parent_content and mediatype)
+        const existingActivity = await db.query(findQuery, [userid, parent_content, mediatype]);
+
+        if (existingActivity.rows.length > 0) {
+            // Update the child_content and stopping_point if an entry exists
+            await db.query(updateQuery, [userid, child_content, parent_content, mediatype, stopping_point]);
+            return res.json({ message: 'User activity updated successfully' });
+        } else {
+            // Insert a new entry if none exists
+            await db.query(insertQuery, [userid, child_content, parent_content, mediatype, stopping_point]);
+            return res.json({ message: 'User activity created successfully' });
+        }
+    } catch (error) {
+        console.error('Database query error:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 
 
 export default router;

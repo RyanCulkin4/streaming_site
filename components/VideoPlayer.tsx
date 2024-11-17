@@ -5,6 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { Popover, PopoverContent, PopoverTrigger } from "@radix-ui/react-popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@radix-ui/react-select";
 import { Anime, Episodes } from "@/app/api/types/types";
+<<<<<<< Updated upstream
 import { formatTime, loadAnime, loadData, loadEpisode, toggleShow, useKeyPress } from "./reusableCode";
 
 interface VideoPlayerProps {
@@ -15,6 +16,19 @@ interface VideoPlayerProps {
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({ animeid, seasonid, episode_number, isControlsVisible }) => {
+=======
+import { formatTime, isLoggedIn, loadAnime, loadData, loadEpisode, postUserActivity, useKeyPress } from "./reusableCode";
+import { useRouter } from 'next/navigation';
+
+
+interface VideoPlayerProps {
+    animeData: Anime;
+    episodeData: Episodes;
+    isControlsVisible: boolean;
+}
+
+export const VideoPlayer: React.FC<VideoPlayerProps> = ({ animeData, episodeData, isControlsVisible }) => {
+>>>>>>> Stashed changes
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isPlaying, setIsPlaying] = useState(true);
     const [isMuted, setIsMuted] = useState(false);
@@ -35,14 +49,37 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ animeid, seasonid, epi
     const [userid, setUserid] = useState<number | undefined>()
     const [lastActionTime, setLastActionTime] = useState(0);
 
+<<<<<<< Updated upstream
     useEffect(() => {
         // Check if the current time is a new 5-second interval
         if (currentTime >= lastActionTime + 10) {
             
+=======
+    const [isClient, setIsClient] = useState(false); // Track if we're on the client
+    const router = useRouter();
+
+    useEffect(() => {
+        const fetchUserId = async () => {
+            const userId = await isLoggedIn();
+            setUserid(userId);
+        };
+
+        fetchUserId(); // Call the async function
+    }, []);
+
+    useEffect(() => {
+        setIsClient(true); // Set to true once the component is mounted
+    }, []);
+
+    useEffect(() => {
+        // Check if the current time is a new 5-second interval
+        if (currentTime >= lastActionTime + 10) {
+            console.log('10s')
+            postUserActivity(userid, episodeData.episodeid, animeData.animeid, Math.round(currentTime));
+>>>>>>> Stashed changes
             setLastActionTime(currentTime); // Update the last action time
         }
     }, [currentTime, lastActionTime]);
-
 
     useEffect(() => {
         const video = videoRef.current;
@@ -69,7 +106,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ animeid, seasonid, epi
 
     useEffect(() => {
         loadData([
-            () => loadEpisode(animeid, episode_number).then(data => {
+            () => loadEpisode(episodeData.episodeid).then(data => {
                 if (data) {
                     setSpecificEpisode(data)
                 }
@@ -141,6 +178,38 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ animeid, seasonid, epi
         }
     };
 
+<<<<<<< Updated upstream
+=======
+    const next_button = async (next: number) => {
+        try {
+            const response = await fetch(`http://localhost:3001/episodes/${animeData.animeid}/${episodeData.seasonid}/${episodeData.episodeid}/${next}`);
+            console.log(animeData.animeid, episodeData.seasonid, episodeData.episodeid, next, animeData.type);
+
+            if (!response.ok) {
+                throw new Error(`Error: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log(data);
+
+            // Extract new season and episode from the response
+            const newSeasonId = data.episode?.seasonid;
+            const episodeId = data.episode?.episodeid;
+            const newEpisodeNumber = data.episode?.episode_number;
+
+            if (newSeasonId && newEpisodeNumber) {
+                // Navigate to the new episode using router.push
+                await router.push(`/${animeData?.type}/player/${episodeId}`);
+            } else {
+                console.log('No next episode available');
+            }
+        } catch (error) {
+            console.error('Failed to toggle episode:', error);
+        }
+    };
+
+
+>>>>>>> Stashed changes
     return (
 
         <div className="relative w-full h-screen" ref={playerRef}>
@@ -148,7 +217,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ animeid, seasonid, epi
                 autoPlay
                 ref={videoRef}
                 className="w-full h-full object-cover"
-                src={`/anime/anime_shows/${animeid}/${seasonid}/${episode_number}.mkv`} // Change Latter On
+                src={`/anime/anime_shows/${animeData.animeid}/${episodeData.seasonid}/${episodeData.episodeid}.mkv`} // Change Latter On
                 onClick={togglePlay}
             />
             <div className={`absolute inset-0 bg-gradient-to-t from-black to-transparent transition-opacity duration-300 ${isControlsVisible ? 'opacity-100' : 'opacity-0'

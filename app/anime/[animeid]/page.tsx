@@ -11,9 +11,10 @@ import { AuthProvider, RunIfLoggedIn, RunIfLoggedOut } from '@/app/api/middlewar
 import { LoggedOutHeader } from '@/components/LoggedOut';
 import { Footer } from '@/components/Footer';
 import { EpisodeSection } from '../../../components/episodeSection';
-import { handleCreateReview, handleRating, isLoggedIn, loadActivity, loadAnime, loadData, loadRating, togglePlay, useKeyPress } from '@/components/reusableCode';
+import { handleCreateReview, handleRating, isLoggedIn, loadActivity, loadAnime, loadData, loadEpisode, loadRating, togglePlay, useKeyPress } from '@/components/reusableCode';
 import { BookmarkButton } from '@/components/bookmarkButton';
 import { useParams } from 'next/navigation';
+import { StarButton } from '@/components/starButton';
 
 export default function ShowPage() {
     const params = useParams();
@@ -24,11 +25,10 @@ export default function ShowPage() {
     const [animeData, setAnimeData] = useState<Anime | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const [hoveredRating, setHoveredRating] = useState(0)
-    const [userRating, setUserRating] = useState<number>(0)
     const [loading, setLoading] = useState(true)
     const [userid, setUserid] = useState<number | undefined>()
-    const [resumeSeason, setResumeSeason] = useState<number>()
-    const [resumeEpisode, setResumeEpisode] = useState<number>()
+    const [episodeData, setEpisodeData] = useState<Episodes>()
+    const [resumeEpisodeDisplay, setResumeEpisodeDisplay] = useState<number>()
     const [watchedShow, setWatchedShow] = useState<boolean>(false)
 
     useEffect(() => {
@@ -41,46 +41,50 @@ export default function ShowPage() {
     }, []); // This runs only once when the component mounts
 
     useEffect(() => {
-        if (userid !== undefined) {
-            // Logged In
-            loadData([
-                () => loadAnime(animeid).then(data => {
-                    if (data) {
-                        setAnimeData(data[0])
-                    }
-                }),
-                () => loadRating(animeid, userid).then((rating: number) => setUserRating(rating)),
-            ]).then(() => setLoading(false));
+        const fetchData = async () => {
+            if (userid !== undefined) {
+                // If logged in, fetch both anime data and user activity
+                try {
+                    const animeData = await loadAnime(animeid);
 
-        } else {
-            // Not Logged In
-            loadData([
-                // Only load anime data when the user is not logged in
-                () => loadAnime(animeid).then(data => {
-                    if (data) {
-                        setAnimeData(data[0])
-                    }
-                }),
-            ]).then(() => setLoading(false));
-        }
-    }, [userid]);
-
-    useEffect(() => {
-        if (animeData && userid !== undefined) {
-            loadData([
-                () => loadActivity(userid, animeData.type, animeData.animeid).then(data => {
-                    if (data) {
-                        setResumeSeason(data.seasonid)
-                        setResumeEpisode(data.episode_number_display)
-
-                        if (data.seasonid && data.episodeid) {
-                            setWatchedShow(true);
+                    if (animeData) {
+                        setAnimeData(animeData);
+                        const activityData = await loadActivity(userid, animeData.type, animeData.animeid);
+                        if (activityData) {
+                            setEpisodeData(activityData);
+                            if (activityData.seasonid && activityData.episodeid) {
+                                setWatchedShow(true);
+                            }
                         }
                     }
-                })
-            ])
-        }
-    }, [animeData])
+                } catch (error) {
+                    console.error("Error loading data:", error);
+                }
+            } else {
+                // If not logged in, only load anime data
+                try {
+                    const animeData = await loadAnime(animeid);
+
+                    if (animeData) {
+                        setAnimeData(animeData);
+
+                        const episodeDatalocal = await loadEpisode(animeData.animeid);
+                        if (episodeDatalocal) {
+                            setResumeEpisodeDisplay(1);
+                            setEpisodeData(episodeDatalocal);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error loading data:", error);
+                }
+            }
+
+            setLoading(false);
+        };
+
+        fetchData();
+    }, [userid, animeid]); // Trigger effect when `userid` or `animeid` changes
+
 
     // Space key to toggle play/pause
     useKeyPress(' ', () => {
@@ -102,8 +106,6 @@ export default function ShowPage() {
             const response = await fetch(`http://localhost:3001/user/activity/${userid}/${contentid}/${mediatype}`);
             if (!response.ok) throw new Error('Network response was not ok');
 
-            console.log(response)
-
             const data = await response.json(); // Parse the response as JSON
             return data; // Return the parsed array of episode objects
         } catch (error) {
@@ -112,8 +114,7 @@ export default function ShowPage() {
 
     }
 
-
-    if (loading) {
+    if (loading || !episodeData) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-black text-white">
                 <p>Loading...</p>
@@ -173,14 +174,14 @@ export default function ShowPage() {
                                             {userid ? ( // User Logged In
                                                 <>
                                                     {watchedShow === true ? ( // User has watched the show
-                                                        <Link href={`/anime/player/${animeData.animeid}/${resumeSeason}/${resumeEpisode}`}>
+                                                        <Link href={`/anime/player/${episodeData.episodeid}`}>
                                                             <Button onClick={() => playPressed(userid, animeData.type, animeData.animeid)} className="bg-white text-black hover:bg-gray-200">
                                                                 <Play />
-                                                                Resume S{resumeSeason}E{resumeEpisode}
+                                                                Resume S{episodeData.season_number_display}E{episodeData.episode_number_display}
                                                             </Button>
                                                         </Link>
                                                     ) : ( // User has not watched the show
-                                                        <Link href={`/anime/player/${animeData.animeid}/1/1`}>
+                                                        <Link href={`/anime/player/${episodeData.episodeid}`}>
                                                             <Button onClick={() => playPressed(userid, animeData.type, animeData.animeid)} className="bg-white text-black hover:bg-gray-200">
                                                                 <Play />
                                                                 Play S1E1
@@ -189,7 +190,7 @@ export default function ShowPage() {
                                                     )}
                                                 </>
                                             ) : ( // User Not Logged In
-                                                <Link href={`/anime/player/${animeData.animeid}/1/1`}>
+                                                <Link href={`/anime/player/${episodeData.episodeid}`}>
                                                     <Button className="bg-white text-black hover:bg-gray-200">
                                                         <Play />
                                                         Play S1E1
@@ -217,23 +218,10 @@ export default function ShowPage() {
                                             </AuthProvider>
                                             <AuthProvider>
                                                 <RunIfLoggedIn>
-                                                    <div className="flex items-center space-x-1">
-                                                        {[1, 2, 3, 4, 5].map((star) => (
-                                                            <button
-                                                                key={star}
-                                                                onClick={() => (setUserRating(star), handleRating(animeid, userid, star))}
-                                                                onMouseEnter={() => setHoveredRating(star)}
-                                                                onMouseLeave={() => setHoveredRating(0)}
-                                                                className="focus:outline-none transition-colors duration-200 ease-in-out"
-                                                                aria-label={`Rate ${star} stars`}>
-                                                                <Star
-                                                                    className={`w-6 h-6 ${star <= (hoveredRating || userRating) ? 'text-yellow-400' : 'text-gray-400'
-                                                                        }`}
-                                                                    fill={star <= userRating ? 'currentColor' : 'none'}
-                                                                />
-                                                            </button>
-                                                        ))}
-                                                    </div>
+                                                    <StarButton
+                                                        animeid={animeid}
+                                                        userid={userid}
+                                                    />
                                                 </RunIfLoggedIn>
                                             </AuthProvider>
                                         </div>

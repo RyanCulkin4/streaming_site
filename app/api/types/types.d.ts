@@ -233,7 +233,8 @@ type Episodes ={
      'duration': number,
      'likes': number, 
      'dislikes': number, 
-     'thumbnail': string
+     'thumbnail': string,
+     'season_number_display': string,
 };
 
 type Reviews ={

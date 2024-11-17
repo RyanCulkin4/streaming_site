@@ -8,19 +8,18 @@ import { Button } from "@/components/ui/button";
 import { AuthProvider, RunIfLoggedIn, RunIfLoggedOut } from '@/app/api/middleware/userLoggedIn';
 import { LoggedOutHeader } from '@/components/LoggedOut';
 import { LoggedInHeader } from '@/components/LoggedIn';
-import { EpisodeSection } from '../../../../../../components/episodeSection';
+import { EpisodeSection } from '../../../../components/episodeSection';
 import { Footer } from '@/components/Footer';
-import { Anime } from '@/app/api/types/types';
-import { isLoggedIn, loadAnime, loadData, loadEpisode, loadEpisodes } from '@/components/reusableCode';
+import { Anime, Episodes } from '@/app/api/types/types';
+import { isLoggedIn, loadAnime, loadAnimeFromEpisodeid, loadData, loadEpisode, loadEpisodes, websiteInitialLoad } from '@/components/reusableCode';
 import { BookmarkButton } from '@/components/bookmarkButton';
 import { VideoPlayer } from '@/components/VideoPlayer';
+import { StarButton } from '@/components/starButton';
 
 export default function AnimePlayer() {
   // Inherited Params
   const params = useParams();
-  const animeid = Number(params.animeid);
-  const episode_number = Number(params.episode_number);
-  const seasonid = Number(params.seasonid);
+  const episodeid = Number(params.episodeid);
 
   // Page Variables
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -30,8 +29,11 @@ export default function AnimePlayer() {
   const playerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [animeData, setAnimeData] = useState<Anime | null>(null);
+  const [animeData, setAnimeData] = useState<Anime | undefined>();
   const [userid, setUserid] = useState<number | undefined>()
+  const [currentTime, setCurrentTime] = useState(0);
+  const [lastActionTime, setLastActionTime] = useState(0);
+  const [episodeData, setEpisodeData] = useState<Episodes | null>(null);
 
   // Is User Logged In?
   useEffect(() => {
@@ -43,17 +45,20 @@ export default function AnimePlayer() {
     checkUserLoggedIn(); // Call to check if the user is logged in
   }, []); // This runs only once when the component mounts
 
-  // Load Data Logic
+
   useEffect(() => {
-    loadData([
-      () => loadAnime(animeid).then(data => {
-        if (data) {
-          setAnimeData(data[0])
-        }
-      }),
-    ])
-  }
-    , [animeid, episode_number, seasonid]);
+    loadAnimeFromEpisodeid(episodeid).then(data => {
+      if (data) {
+        setAnimeData(data)
+      }
+    })
+    loadEpisode(episodeid).then(data => {
+      if (data) {
+        setEpisodeData(data)
+      }
+    })
+  }, [episodeid]);
+
 
   // Mouse Movment Logic
   useEffect(() => {
@@ -92,7 +97,23 @@ export default function AnimePlayer() {
 
   // Ensure we Have the Data neede
   if (!animeData) {
-    return <div>Loading anime...</div>;
+
+    console.log('Anime Data:', animeData)
+
+    return (
+      <div>
+        Loading animeData ...
+      </div>
+    );
+  }
+
+  if (!episodeData) {
+    console.log('Episode Data:', episodeData)
+    return (
+      <div>
+        Loading episodeData ...
+      </div>
+    );
   }
 
   return (
@@ -114,7 +135,11 @@ export default function AnimePlayer() {
         {/* Main Content */}
         <main>
           {/* Video Player */}
+<<<<<<< Updated upstream:app/anime/player/[animeid]/[seasonid]/[episode_number]/page.tsx
           <VideoPlayer animeid={animeData.animeid} seasonid={seasonid} episode_number={episode_number} isControlsVisible={isControlsVisible}/>
+=======
+          <VideoPlayer animeData={animeData} episodeData={episodeData} isControlsVisible={isControlsVisible} />
+>>>>>>> Stashed changes:app/anime/player/[episodeid]/page.tsx
           {/* Anime Details */}
           <section className="p-6 md:p-12">
             <h1 className="text-4xl font-bold mb-2">{animeData.native_title}</h1>
@@ -140,10 +165,10 @@ export default function AnimePlayer() {
                   <BookmarkButton animeid={animeData.animeid} userid={userid} animetype={animeData.type} />
                 </RunIfLoggedIn>
               </AuthProvider>
-              <Button variant="outline">
-                <ThumbsUp className="w-5 h-5 mr-2" />
-                Like
-              </Button>
+              <StarButton
+                animeid={animeData.animeid}
+                userid={userid}
+              />
             </div>
           </section>
 

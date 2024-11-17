@@ -49,11 +49,11 @@ export const loadData = async (children: Function[]) => {
     }
 };
 
-export const loadAnime = async (animeid: number): Promise<Anime[] | undefined> => {
+export const loadAnime = async (animeid: number): Promise<Anime | undefined> => {
     if (!animeid) return; // Ensure id is defined
     try {
         const response = await fetch(`http://localhost:3001/anime/${animeid}`);
-        const data: Anime[] = await response.json(); // Expect an array
+        const data: Anime = await response.json(); // Expect an array
         return data; // Return the first item in the array
     } catch (error) {
         console.error('Failed to fetch anime data:', error);
@@ -61,6 +61,23 @@ export const loadAnime = async (animeid: number): Promise<Anime[] | undefined> =
     }
 };
 
+export const loadAnimeFromEpisodeid = async (episodeid: number): Promise<Anime | undefined> => {
+    if (!episodeid) return; // No anime ID to fetch episodes for
+    try {
+        const response = await fetch(`http://localhost:3001/episode2/${episodeid}`);
+        if (!response.ok) {
+            throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json(); // Parse JSON once
+        return data as Anime; // Return the data with type assertion
+    } catch (error) {
+        console.error('Failed to fetch Anime data:', error);
+        return;
+    }
+};
+
+ 
 export const loadEpisodes = async (animeId: number): Promise<Episodes[] | undefined> => {
     if (!animeId) return; // No anime ID to fetch episodes for
     try {
@@ -73,11 +90,11 @@ export const loadEpisodes = async (animeId: number): Promise<Episodes[] | undefi
     }
 };
 
-export const loadEpisode = async (animeid: number, episodenumber: number): Promise<Episodes | undefined> => {
-    if (!animeid) return; // No anime ID to fetch episodes for
+export const loadEpisode = async (episodeid: number): Promise<Episodes | undefined> => {
+    if (!episodeid) return; // No anime ID to fetch episodes for
     try {
-        const response = await fetch(`http://localhost:3001/anime/${animeid}/${episodenumber}`);
-        if (!response.ok) throw console.log('Network response was not ok');
+        const response = await fetch(`http://localhost:3001/anime/e/${episodeid}`);
+        if (!response.ok) throw console.error('Network response was not ok');
 
         const data = await response.json(); // Parse the response as JSON
         return data[0]; // Return the parsed array of episode objects
@@ -87,13 +104,15 @@ export const loadEpisode = async (animeid: number, episodenumber: number): Promi
     }
 };
 
-export const loadReviews = async (animeId: number): Promise<Reviews[]> => {
+export const loadReviews = async (animeId: number): Promise<Reviews[] | undefined> => {
     if (!animeId) return []; // No anime ID to fetch reviews for
+    const data = undefined
     try {
-        const response = await fetch(`http://localhost:3001/${animeId}/reviews`);
-        if (!response.ok) throw new Error('Network response was not ok');
 
+        const response = await fetch(`http://localhost:3001/anime/${animeId}/reviews`);
+        if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json(); // Parse the response as JSON
+        
         return data; // Return the parsed array of episode objects
     } catch (error) {
         console.error('Failed to fetch episode data:', error);
@@ -101,25 +120,21 @@ export const loadReviews = async (animeId: number): Promise<Reviews[]> => {
     }
 };
 
-export const loadActivity = async (userid: number, mediatype: string, contentid: number) => {
-    // Algorithm to get latest show to display
-
+export const loadActivity = async (
+    userid: number, 
+    mediatype: string, 
+    contentid: number
+): Promise<Episodes | undefined> => {
     try {
         const response = await fetch(`http://localhost:3001/user/activity/${userid}/${contentid}/${mediatype}`);
         if (!response.ok) throw new Error('Network response was not ok');
 
         const data: UserActivity = await response.json();
-
-        const { child_content } = data;
-
-        const anime_return = await loadEpisode(contentid, child_content)
-        if (anime_return) {
-            return anime_return // Return the parsed array of episode objects
-        } else {
-            return null
-        }
-
+        const animeReturn = await loadEpisode(data.child_content);
+        return animeReturn;
     } catch (error) {
+        console.error('Error in loadActivity:', error);
+        return undefined; // Explicitly returning undefined on error
     }
 };
 
@@ -151,6 +166,46 @@ export const loadRating = async (animeId: number, userid: number | undefined) =>
         return; // Optionally return null or a specific value to indicate failure
     }
 };
+
+export const postUserActivity = async (
+    userid: number | undefined,
+    episodeid: number,
+    animeId: number,
+    currentpoint: number
+) => {
+
+    // Check if any required value is missing
+    console.log('Numbers:', animeId, episodeid, userid, currentpoint)
+    if (!animeId || !userid || !episodeid || !currentpoint) return; // Only return if values are missing
+
+    console.log('ran :P');
+
+    try {
+        const response = await fetch(`http://localhost:3001/anime/useractivity`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userid,
+                child_content: episodeid,
+                parent_content: animeId,
+                mediatype: 'anime',
+                stopping_point: currentpoint,
+            }),
+        });
+
+        if (!response.ok) throw new Error('Network response was not ok');
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.log('Failed to post user activity data:', error);
+        return null;
+    }
+};
+
+
 
 // ---------------------- Other Functions ----------------------
 

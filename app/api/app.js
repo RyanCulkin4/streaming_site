@@ -460,7 +460,6 @@ app.get('/episodes/:animeid/:seasonid/:episode_number/:next', async (req, res) =
         // Step 2: If there's no episode in the same season, check for adjacent seasons
         const result = await db.query(query, values);
         let episode = result.rows[0];
-
         if (!episode) {
             const newSeasonNumber = parseInt(seasonid) + (direction > 0 ? 1 : -1);
             
@@ -486,6 +485,79 @@ app.get('/episodes/:animeid/:seasonid/:episode_number/:next', async (req, res) =
         res.status(500).json({ message: 'Server error' });
     }
 });
+
+app.get('/episode2/:episodeid', async (req, res) => {
+    const episodeid = parseInt(req.params.episodeid, 10);
+
+    // Check if the episodeid is a valid integer
+    if (isNaN(episodeid)) {
+        return res.status(400).json({ error: 'Invalid episode ID. It must be a valid integer.' });
+    }
+
+    const query = `
+-- CTE to get episode details and link them to the parent season
+WITH episode_info AS (
+    SELECT 
+        anime_season_episodes.episodeid,
+        anime_season_episodes.seasonid,
+        anime_season_episodes.title AS episode_title,
+        anime_season_episodes.episode_number,
+        anime_season_episodes.release_date AS episode_release_date,
+        anime_season.animeid
+    FROM 
+        anime_season_episodes
+    JOIN 
+        anime_season ON anime_season_episodes.seasonid = anime_season.seasonid
+    WHERE 
+        anime_season_episodes.episodeid = $1
+),
+
+-- CTE to gather anime details linked to the episode
+anime_info AS (
+    SELECT 
+        anime.*,
+        ARRAY_AGG(users.username) AS author_names
+    FROM 
+        anime
+    JOIN 
+        anime_authors ON anime.animeid = anime_authors.animeid
+    JOIN 
+        users ON anime_authors.authorid = users.userid
+    WHERE 
+        anime.animeid = (SELECT animeid FROM episode_info)
+    GROUP BY 
+        anime.animeid
+)
+
+-- Final query to fetch all required data
+SELECT 
+    anime_info.*,
+    episode_info.episodeid,
+    episode_info.seasonid,
+    episode_info.episode_title,
+    episode_info.episode_number,
+    episode_info.episode_release_date
+FROM 
+    anime_info
+JOIN 
+    episode_info ON anime_info.animeid = episode_info.animeid;
+
+`;
+
+    try {
+        const result = await db.query(query, [episodeid]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Episode not found' });
+        }
+
+        // Extract the first item from the array if there are results
+        return res.json(result.rows[0]);
+    } catch (error) {
+        console.log('Database query error:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 
 
 // Handles all requests that dont exsist
