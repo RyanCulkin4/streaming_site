@@ -223,7 +223,7 @@ app.get('/query/:toQuery/e/:excludeQuery/:returns', checkToken, async (req, res)
         'videos',
         'website_variables'
     ];
- 
+
     if (!allowedTables.includes(toQuery)) {
         return res.status(400).json({ message: 'Invalid query type' });
     }
@@ -444,47 +444,96 @@ app.post('/bookmarks/:userid/:contentid/:mediatype', async (req, res) => {
 });
 
 
-app.get('/episodes/:animeid/:seasonid/:episode_number/:next', async (req, res) => {
-    const { animeid, seasonid, episode_number, next } = req.params;
-    const direction = parseInt(next);
+app.get('/episodes/:episodeid/:next', async (req, res) => {
+    const { episodeid, next } = req.params;
+    const direction = parseInt(next); // +1 for next, -1 for previous
 
     try {
-        // Step 1: Find the next or previous episode in the current season
-        let query = `
-            SELECT * FROM anime_season_episodes 
-            WHERE seasonid = $1 
-            AND episode_number = $2
+        // SQL query to find the next or previous episode
+        const query = `
+            WITH current_episode AS (
+                SELECT 
+                    anime_season_episodes.episodeid,
+                    anime_season_episodes.seasonid,
+                    anime_season_episodes.episode_number,
+                    anime_season.animeid
+                FROM 
+                    anime_season_episodes
+                INNER JOIN 
+                    anime_season
+                ON 
+                    anime_season_episodes.seasonid = anime_season.seasonid
+                WHERE 
+                    anime_season_episodes.episodeid = $1
+            ),
+            next_episode_same_season AS (
+                SELECT 
+                    anime_season_episodes.*
+                FROM 
+                    anime_season_episodes
+                INNER JOIN 
+                    current_episode
+                ON 
+                    anime_season_episodes.seasonid = current_episode.seasonid 
+                    AND anime_season_episodes.episode_number = current_episode.episode_number + $2
+            ),
+            next_season_episode AS (
+                SELECT 
+                    anime_season_episodes.*
+                FROM 
+                    anime_season_episodes
+                INNER JOIN 
+                    anime_season
+                ON 
+                    anime_season_episodes.seasonid = anime_season.seasonid
+                WHERE 
+                    anime_season.animeid = (SELECT animeid FROM current_episode)
+                    AND anime_season.season_number = (
+                        SELECT 
+                            anime_season.season_number + $2
+                        FROM 
+                            anime_season
+                        INNER JOIN 
+                            current_episode
+                        ON 
+                            anime_season.seasonid = current_episode.seasonid
+                    )
+                    AND anime_season_episodes.episode_number = CASE 
+                        WHEN $2 > 0 THEN 1  -- First episode if moving to the next season
+                        WHEN $2 < 0 THEN (
+                            SELECT MAX(episode_number) 
+                            FROM anime_season_episodes
+                            WHERE seasonid = anime_season.seasonid
+                        ) -- Last episode if moving to the previous season
+                    END
+            )
+            SELECT * 
+            FROM next_episode_same_season
+            UNION ALL
+            SELECT * 
+            FROM next_season_episode
+            LIMIT 1;
         `;
-        let values = [seasonid, parseInt(episode_number) + direction];
 
-        // Step 2: If there's no episode in the same season, check for adjacent seasons
+        // Parameters for the query
+        const values = [episodeid, direction];
+
+        // Execute the query
         const result = await db.query(query, values);
-        let episode = result.rows[0];
-        if (!episode) {
-            const newSeasonNumber = parseInt(seasonid) + (direction > 0 ? 1 : -1);
-            
-            // Step 3: Get the first or last episode in the adjacent season
-            query = `
-                SELECT * FROM anime_season_episodes 
-                WHERE seasonid = (SELECT seasonid FROM anime_season WHERE animeid = $1 AND season_number = $2)
-                ORDER BY episode_number ${direction > 0 ? 'ASC' : 'DESC'} 
-                LIMIT 1
-            `;
-            values = [animeid, newSeasonNumber];
-            const newSeasonResult = await db.query(query, values);
-            episode = newSeasonResult.rows[0];
-        }
 
-        if (episode) {
-            res.json({ episode });
+        if (result.rows.length > 0) {
+            // Return the found episode
+            res.json({ episode: result.rows[0] });
         } else {
+            // No episode found in the specified direction
             res.status(404).json({ message: 'No more episodes in this direction' });
         }
     } catch (error) {
-        console.log(error);
+        console.error(error);
         res.status(500).json({ message: 'Server error' });
     }
 });
+
 
 app.get('/episode2/:episodeid', async (req, res) => {
     const episodeid = parseInt(req.params.episodeid, 10);

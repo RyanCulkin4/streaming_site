@@ -135,11 +135,7 @@ export default function AnimePlayer() {
         {/* Main Content */}
         <main>
           {/* Video Player */}
-<<<<<<< Updated upstream:app/anime/player/[animeid]/[seasonid]/[episode_number]/page.tsx
-          <VideoPlayer animeid={animeData.animeid} seasonid={seasonid} episode_number={episode_number} isControlsVisible={isControlsVisible}/>
-=======
           <VideoPlayer animeData={animeData} episodeData={episodeData} isControlsVisible={isControlsVisible} />
->>>>>>> Stashed changes:app/anime/player/[episodeid]/page.tsx
           {/* Anime Details */}
           <section className="p-6 md:p-12">
             <h1 className="text-4xl font-bold mb-2">{animeData.native_title}</h1>

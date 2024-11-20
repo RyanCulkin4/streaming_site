@@ -4,8 +4,7 @@ import React from 'react';
 import axios from "axios";
 import jwt from 'jsonwebtoken'
 import dotenv from 'dotenv';
-import { useRouter } from 'next/router';
-
+import { useRouter } from 'next/navigation'
 
 export const websiteInitialLoad = (children: Function[], GivenVariable: any) => {
     useEffect(() => {
@@ -68,7 +67,7 @@ export const loadAnimeFromEpisodeid = async (episodeid: number): Promise<Anime |
         if (!response.ok) {
             throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
         }
-        
+
         const data = await response.json(); // Parse JSON once
         return data as Anime; // Return the data with type assertion
     } catch (error) {
@@ -77,7 +76,7 @@ export const loadAnimeFromEpisodeid = async (episodeid: number): Promise<Anime |
     }
 };
 
- 
+
 export const loadEpisodes = async (animeId: number): Promise<Episodes[] | undefined> => {
     if (!animeId) return; // No anime ID to fetch episodes for
     try {
@@ -112,7 +111,7 @@ export const loadReviews = async (animeId: number): Promise<Reviews[] | undefine
         const response = await fetch(`http://localhost:3001/anime/${animeId}/reviews`);
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json(); // Parse the response as JSON
-        
+
         return data; // Return the parsed array of episode objects
     } catch (error) {
         console.error('Failed to fetch episode data:', error);
@@ -121,8 +120,8 @@ export const loadReviews = async (animeId: number): Promise<Reviews[] | undefine
 };
 
 export const loadActivity = async (
-    userid: number, 
-    mediatype: string, 
+    userid: number,
+    mediatype: string,
     contentid: number
 ): Promise<Episodes | undefined> => {
     try {
@@ -223,35 +222,34 @@ export const togglePlay = (videoRef: React.RefObject<HTMLVideoElement>, setIsPla
 
 
 export const toggleShow = async (
-    type: string,
     next: number,
-    animeid: number,
-    seasonid: number,
-    season_number: number,
-    episode_number: number,
+    oldepisodeid: number,
+    router: ReturnType<typeof useRouter>
 ) => {
-    const router = useRouter();
-
     try {
-        const response = await fetch(`http://localhost:3001/episodes/${animeid}/${seasonid}/${episode_number}/${next}`);
+        // Fetch the next or previous episode based on `next` and `episodeid`
+        const response = await fetch(`http://localhost:3001/episodes/${oldepisodeid}/${next}`);
         if (!response.ok) {
             throw new Error(`Error: ${response.statusText}`);
         }
 
         const data = await response.json();
 
-        // Assuming `data` contains the new season and episode details for redirection
-        const { newSeasonId, newEpisodeNumber } = data;
-        if (newSeasonId && newEpisodeNumber) {
-            // Redirect to the new URL
-            router.push(`/anime/player/${animeid}/${season_number}/${episode_number}`);
+        // Check if an episode is returned
+        const episode = data.episode;
+        if (episode) {
+            const { seasonid, episode_number, episodeid} = episode;
+
+            // Redirect to the new episode's URL
+            router.push(`/anime/player/${episodeid}`);
         } else {
-            console.log('No next episode available');
+            console.log('No next or previous episode available');
         }
     } catch (error) {
         console.error('Failed to toggle episode:', error);
     }
 };
+
 
 export const commentLikeEvent = () => {
     // Implement review creation logic here
