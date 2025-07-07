@@ -33,3 +33,4 @@ docker-compose.override.yml
 coverage/
 *.lcov
 jest-output/
+# Temporary files
