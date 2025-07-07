@@ -1,0 +1,611 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../shared/prisma_client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Anime {
+  animeid          String       @id @default(cuid())
+  description      String?      @default("An amazing show with a great story lies ahead")
+  trailerid        String?
+  upload_date      DateTime?    @default(now())
+  release_date     DateTime     @default(dbgenerated("'2024-12-08 20:51:00'::timestamp without time zone"))
+  likes            BigInt       @default(0)
+  dislikes         BigInt       @default(0)
+  activity         Int          @default(0)
+  authorid         String
+  average_rating   Float        @default(0)
+  anime_ratings    Int          @default(0)
+  age_rating       AgeRating    @default(G)
+  mangaid          String?
+  title            String
+  type             MediaType    @default(ANIME)
+  MediaGenre       MediaGenre[]
+  anime_key_visual String?      @default("")
+  visible          Boolean      @default(false)
+
+  // Existing Relations
+  Manga         Manga?          @relation(fields: [mangaid], references: [mangaid], onDelete: NoAction, onUpdate: NoAction, map: "anime_media_id_reference_fkey")
+  Videos        Videos?         @relation(fields: [trailerid], references: [videoid], onDelete: NoAction, onUpdate: NoAction, map: "anime_trailer_id_fkey")
+  Users         Users           @relation(fields: [authorid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "author_id_fkey")
+  Anime_Authors Anime_Authors[]
+  Bookmarks     Bookmarks[]
+
+  // Updated Relation: Anime -> ContentGroupMedia -> ContentGroup
+  ContentGroupLinks ContentGroupMedia[] @relation("Anime_ContentGroupMedia")
+}
+
+model Anime_Authors {
+  animeid  String
+  authorid String
+  Anime    Anime  @relation(fields: [animeid], references: [animeid], onDelete: NoAction, onUpdate: NoAction)
+  Users    Users  @relation(fields: [authorid], references: [userid], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([animeid, authorid])
+}
+
+model Bookmarks {
+  userid    String
+  mediatype MediaType
+  parentid  String
+  Anime     Anime     @relation(fields: [parentid], references: [animeid], onDelete: Cascade, map: "Bookmarks_Anime_parentid_fkey")
+  Manga     Manga     @relation(fields: [parentid], references: [mangaid], onDelete: Cascade, map: "Bookmarks_Manga_parentid_fkey")
+  Movies    Movies    @relation(fields: [parentid], references: [movieid], onDelete: Cascade, map: "Bookmarks_Movies_parentid_fkey")
+  Videos    Videos    @relation(fields: [parentid], references: [videoid], onDelete: Cascade, map: "Bookmarks_Videos_parentid_fkey")
+  Users     Users     @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([userid, parentid, mediatype])
+}
+
+model Comments {
+  commentid         Int         @id @default(autoincrement())
+  parentid          String
+  mediatype         MediaType
+  mediatime         Int
+  userid            String
+  comment_text      String      @default("A really cool comment")
+  comment_date      DateTime    @default(now())
+  parent_comment_id Int?
+  likes             BigInt      @default(0)
+  dislikes          BigInt      @default(0)
+  ContentUnit       ContentUnit @relation(fields: [parentid], references: [episodeid], onDelete: Cascade, map: "Comments_ContentUnit_parentid_fkey")
+  Videos            Videos      @relation(fields: [parentid], references: [videoid], onDelete: Cascade, map: "Comments_Videos_parentid_fkey")
+  Users             Users       @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model ContentGroup {
+  seasonid      String   @id @default(cuid())
+  season_number Int
+  release_date  DateTime @default(now())
+  visible       Boolean  @default(false)
+  season_path   String   @default("shows")
+
+  // Relation to ContentGroupMedia
+  ContentGroupLinks ContentGroupMedia[] @relation("ContentGroup_ContentGroupMedia")
+}
+
+model ContentGroupMedia {
+  id        String    @id @default(cuid())
+  seasonid  String
+  mediaid   String // Links to Anime, Manga, or Movie IDs
+  mediatype MediaType // ANIME, MANGA, MOVIE
+
+  // Back relations to media types
+  Anime  Anime?  @relation("Anime_ContentGroupMedia", fields: [mediaid], references: [animeid], onDelete: Cascade, map: "ContentGroupMedia_Anime_mediaid_fkey")
+  Manga  Manga?  @relation("Manga_ContentGroupMedia", fields: [mediaid], references: [mangaid], onDelete: Cascade, map: "ContentGroupMedia_Manga_mediaid_fkey")
+  Movies Movies? @relation("Movies_ContentGroupMedia", fields: [mediaid], references: [movieid], onDelete: Cascade, map: "ContentGroupMedia_Movies_mediaid_fkey")
+
+  // Relation to ContentGroup (season)
+  ContentGroup ContentGroup  @relation("ContentGroup_ContentGroupMedia", fields: [seasonid], references: [seasonid], onDelete: Cascade)
+  ContentUnits ContentUnit[]
+
+  @@unique([seasonid, mediaid, mediatype])
+}
+
+model ContentUnit {
+  episodeid      String     @id @default(cuid())
+  contentgroupid String
+  title          String     @default("An Amazing Episode")
+  description    String     @default("An incredible show with a story to be told")
+  release_date   DateTime?  @default(now())
+  likes          BigInt     @default(0)
+  dislikes       BigInt     @default(0)
+  visible        Boolean    @default(false)
+  episode_number Float
+  views          Int        @default(0)
+  duration       Int
+  episode_path   String     @default("")
+  thumbnail      String     @default("")
+  Comments       Comments[]
+
+  // Link to ContentGroupMedia instead of ContentGroup
+  ContentGroupMedia ContentGroupMedia @relation(fields: [contentgroupid], references: [id], onDelete: Cascade)
+}
+
+model Disliked_Content {
+  userid    String
+  contentid Int
+  mediatype MediaType
+  Users     Users     @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([userid, contentid, mediatype])
+}
+
+model File {
+  id             String       @id @default(cuid())
+  name           String
+  description    String?
+  path           String       @default("server_data/")
+  extension      String
+  folderId       String?
+  size           BigInt
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime?
+  lastAccessed   DateTime?
+  isShared       Boolean      @default(false)
+  ownerId        String
+  tags           String[]     @default(["file"])
+  checksum       String?
+  downloadCount  Int          @default(0)
+  previewEnabled Boolean      @default(true)
+  isPublic       Boolean      @default(true)
+  filetype       FileType     @default(FILE)
+  location       MediaType    @default(STORAGE)
+  Folder         Folder?      @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  Users          Users        @relation(fields: [ownerId], references: [userid])
+  FileShares     FileShares[]
+
+  @@unique([ownerId, folderId, name])
+}
+
+model FileShares {
+  userId      String
+  fileId      String
+  accessLevel AccessLevel @default(READ)
+  File        File        @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  Users       Users       @relation(fields: [userId], references: [userid], onDelete: Cascade)
+
+  @@id([userId, fileId])
+}
+
+model Folder {
+  id             String         @id @default(cuid())
+  name           String
+  description    String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime?
+  lastAccessed   DateTime?
+  ownerId        String
+  tags           String[]       @default(["folder"])
+  accessCount    Int            @default(0)
+  totalSize      Int            @default(0)
+  parentFolderId String?
+  filetype       FileType       @default(FOLDER)
+  location       MediaType      @default(STORAGE)
+  File           File[]
+  Users          Users          @relation(fields: [ownerId], references: [userid])
+  Folder         Folder?        @relation("FolderToFolder", fields: [ownerId, parentFolderId], references: [ownerId, id], onDelete: Cascade)
+  other_Folder   Folder[]       @relation("FolderToFolder")
+  FolderShares   FolderShares[]
+
+  @@unique([ownerId, id])
+}
+
+model FolderShares {
+  userId      String
+  folderId    String
+  accessLevel AccessLevel @default(READ)
+  Folder      Folder      @relation(fields: [folderId], references: [id])
+  Users       Users       @relation(fields: [userId], references: [userid], onDelete: Cascade)
+
+  @@id([userId, folderId])
+}
+
+model Liked_Content {
+  userid    String
+  mediatype MediaType
+  contentid Int
+  Users     Users     @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([userid, contentid, mediatype])
+}
+
+model Manga {
+  mangaid           String              @id @default(cuid())
+  authorid          String
+  title             String              @db.VarChar(255)
+  description       String?             @default("Really Cool Manga")
+  release_date      DateTime?           @default(dbgenerated("CURRENT_DATE")) @db.Date
+  cover_iamge       String?
+  likes             BigInt              @default(0)
+  dislikes          BigInt              @default(0)
+  age_rating        AgeRating           @default(G)
+  MediaGenre        MediaGenre[]
+  Anime             Anime[]
+  Bookmarks         Bookmarks[]
+  Users             Users               @relation(fields: [authorid], references: [userid], onDelete: NoAction, onUpdate: NoAction)
+  ContentGroupLinks ContentGroupMedia[] @relation("Manga_ContentGroupMedia")
+}
+
+model Movies {
+  movieid              String              @id @default(cuid())
+  title                String              @db.VarChar(255)
+  description          String?
+  release_date         DateTime?           @default(dbgenerated("CURRENT_DATE")) @db.Date
+  media_id_reference   Int?
+  likes                BigInt              @default(0)
+  dislikes             BigInt              @default(0)
+  showbanner           String?
+  age_rating           AgeRating           @default(G)
+  authorid             String
+  media_reference_type MediaType
+  MediaGenre           MediaGenre[]
+  Bookmarks            Bookmarks[]
+  Users                Users               @relation(fields: [authorid], references: [userid], onDelete: NoAction, onUpdate: NoAction)
+  ContentGroupLinks    ContentGroupMedia[] @relation("Movies_ContentGroupMedia")
+}
+
+model Polls {
+  pollid      Int       @id @default(autoincrement())
+  author      String
+  title       String    @db.VarChar(255)
+  description String
+  likes       BigInt    @default(0)
+  dislikes    BigInt    @default(0)
+  date        DateTime? @default(now()) @db.Timestamp(6)
+  category    String    @default("all")
+  status      String    @default("In Voting")
+  progress    String?
+  views       Int       @default(0)
+  Users       Users     @relation(fields: [author], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model Reviews {
+  reviewid    Int       @id @default(autoincrement())
+  parentid    String
+  mediatype   MediaType
+  userid      String
+  review_text String    @default("This is a great show")
+  review_date DateTime  @default(now())
+  likes       BigInt    @default(0)
+  dislikes    BigInt    @default(0)
+  Users       Users     @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model Shopping_Cart {
+  userid   String
+  storeid  String
+  quantity Int?   @default(0)
+  Store    Store  @relation(fields: [storeid], references: [storeid], onDelete: Cascade, onUpdate: NoAction)
+  Users    Users  @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([userid, storeid])
+}
+
+model Store {
+  storeid              String          @id @default(cuid())
+  sellerid             String
+  title                String
+  num_in_stock         Int             @default(0)
+  release_date         DateTime?       @default(dbgenerated("CURRENT_DATE")) @db.Date
+  original_price       Decimal         @default(0.00) @db.Decimal(10, 2)
+  discount_price       Decimal         @default(0.00) @db.Decimal(10, 2)
+  discount_percent     Float           @default(0.00)
+  shipping_price       Decimal         @default(0.00) @db.Decimal(10, 2)
+  description          String          @default("A really cool item")
+  num_of_carts         Int             @default(0)
+  images               String?         @default("")
+  media_id_reference   Int?
+  sales                Int             @default(0)
+  reference_media_type String?
+  MediaGenre           MediaGenre[]
+  Shopping_Cart        Shopping_Cart[]
+  Users                Users           @relation(fields: [sellerid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model Subscription_Tiers {
+  tierid         Int        @id @db.SmallInt
+  name           String     @unique
+  price          Int        @db.SmallInt
+  votepower      Int        @db.SmallInt
+  cloudlimit     Int        @db.SmallInt
+  icon           String?    @db.VarChar
+  store_discount Int        @default(0)
+  game_discount  Int        @default(0)
+  permissions    navItems[]
+  features       String[]
+  userid         String? // This is a foreign key to the Users table allows for custom tiers
+  Users          Users[]
+}
+
+model TitleTranslation {
+  translationid Int       @id @default(autoincrement())
+  parentid      Int
+  mediatype     MediaType
+  title         String    @db.VarChar(255)
+  language      String    @db.VarChar(10)
+}
+
+model User_Activity {
+  userid         String
+  child_content  String
+  parent_content String
+  mediatype      MediaType
+  stopping_point Int
+  date_watched   DateTime  @default(now())
+  Users          Users     @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction, map: "fk_user")
+
+  @@id([userid, child_content, parent_content, mediatype])
+}
+
+model User_Bookmarks {
+  userid    String
+  mediatype MediaType
+  parentid  String
+  Users     Users     @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([userid, parentid, mediatype])
+}
+
+model User_Ratings {
+  userid    String
+  parentid  String
+  mediatype MediaType
+  rating    Int
+  Users     Users     @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([userid, parentid])
+}
+
+model Users {
+  userid              String              @id @default(cuid())
+  username            String              @unique @db.VarChar(30)
+  email               String              @unique @db.VarChar(60)
+  password_hash       String              @db.VarChar(120)
+  date_joined         DateTime            @default(now())
+  num_of_friends      Int?                @default(0)
+  num_of_followers    Int?                @default(0)
+  profile_picture     String?             @db.VarChar(255)
+  user_bio            String?             @default("A really cool user :P")
+  two_factor          Boolean             @default(false)
+  email_notifications Boolean             @default(false)
+  push_notifications  Boolean             @default(false)
+  subscriptionTierId  Int?                @db.SmallInt
+  usedstorage         BigInt              @default(0)
+  subscription_tier   Subscription_Tiers? @relation(fields: [subscriptionTierId], references: [tierid])
+  accountType         AccountType         @default(INDIVIDUAL)
+  Anime               Anime[]
+  Anime_Authors       Anime_Authors[]
+  Bookmarks           Bookmarks[]
+  Comments            Comments[]
+  Disliked_Content    Disliked_Content[]
+  File                File[]
+  FileShares          FileShares[]
+  Folder              Folder[]
+  FolderShares        FolderShares[]
+  Liked_Content       Liked_Content[]
+  Manga               Manga[]
+  Movies              Movies[]
+  Polls               Polls[]
+  Reviews             Reviews[]
+  Shopping_Cart       Shopping_Cart[]
+  Store               Store[]
+  User_Activity       User_Activity[]
+  User_Bookmarks      User_Bookmarks[]
+  User_Ratings        User_Ratings[]
+  Videos              Videos[]
+}
+
+model Videos {
+  videoid      String       @id @default(cuid())
+  title        String       @db.VarChar(255)
+  authorid     String
+  description  String       @default("A really cool video")
+  release_date DateTime?    @default(dbgenerated("CURRENT_DATE")) @db.Date
+  media_type   MediaType    @default(VIDEO)
+  video_banner String       @default("")
+  likes        BigInt       @default(0)
+  dislikes     BigInt       @default(0)
+  duration     BigInt?
+  MediaGenre   MediaGenre[]
+  thumbnail    String       @default("")
+  views        Int          @default(0)
+  Anime        Anime[]
+  Bookmarks    Bookmarks[]
+  Comments     Comments[]
+  Users        Users        @relation(fields: [authorid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model Website_Variables {
+  website_version     String      @id
+  footer_items        String[]
+  footer_separator    String?     @db.VarChar(1)
+  important_info      String?
+  rootContentPath     String?     @default("public/content")
+  loggedin_nav_items  MediaType[]
+  loggedout_nav_items MediaType[]
+}
+
+enum FileType {
+  FILE
+  FOLDER
+}
+
+enum AccessLevel {
+  READ
+  WRITE
+  ADMIN
+}
+
+enum AccountType {
+  INDIVIDUAL
+  STUDIO
+  ADMIN
+}
+
+enum AgeRating {
+  G
+  PG
+  PG13
+  R
+  NC17
+  MA
+}
+
+enum MediaGenre {
+  ACTION
+  ADVENTURE
+  COMEDY
+  DRAMA
+  FANTASY
+  HORROR
+  MYSTERY
+  ROMANCE
+  SCI_FI
+  SLICE_OF_LIFE
+  SPORTS
+  SUPERNATURAL
+  THRILLER
+  MECHA
+  HISTORICAL
+  MUSIC
+  PSYCHOLOGICAL
+  SCHOOL
+  SHOUNEN
+  SHOUJO
+  SEINEN
+  JOSEI
+  ISEKAI
+  MILITARY
+  VAMPIRE
+  DEMONS
+  MAGIC
+  PARODY
+  MARTIAL_ARTS
+  GAME
+  HAREM
+  YAOI
+  YURI
+  TRAGEDY
+  CRIME
+  WESTERN
+  BIOGRAPHY
+  DOCUMENTARY
+  FAMILY
+  KIDS
+  ARTS
+  ANIME
+  SUPERHERO
+  FOLKLORE
+  ECOLOGICAL
+  ALTERNATIVE
+  LITRPG
+  CYBERPUNK
+  STEAMPUNK
+  GOTHIC
+  POST_APOCALYPTIC
+  HIGH_FANTASY
+  LOW_FANTASY
+  ARTSY
+  AUTOBIOGRAPHY
+  SLASHER
+  SUSPENSE
+  ROMANTIC_COMEDY
+  FANFICTION
+  COZY_MYSTERY
+  BODY_HORROR
+  ADULT_ANIMATION
+  POLITICAL
+  SCIENCE_FANTASY
+  ANARCHY
+  APOCALYPTIC
+  ZOMBIE
+  VILLAIN
+  MUSIC_DRAMA
+  FANTASY_ROMANCE
+  HISTORICAL_FICTION
+  SHAPESHIFTER
+  SWORD_AND_SORCERY
+  GUILTY_PLEASURE
+  ECO_FICTION
+  RELIGIOUS
+  EXPLORATION
+  WAR_DRAMA
+  ROAD_MOVIE
+  POLICE_PROCEDURAL
+  ANIMATED_COMEDY
+  LOVE_TRIANGLE
+  PSYCHIC
+  FANTASY_ADVENTURE
+  DARK_FANTASY
+  TERROR
+  WITCHCRAFT
+  SURVIVAL
+  UTOPIA
+  DYSTOPIA
+  GENDER_BENDER
+  TIME_TRAVEL
+  HIGH_SCHOOL
+  WAR_FANTASY
+  RAPE_REVENUE
+  MYSTICAL_REALISM
+  WUXIA
+  MYTHOLOGY
+  FRAGMENTED_NARRATIVE
+  DANCE
+  FANTASY_MYSTERY
+  INDIE
+  FOLK
+  ZANY
+  MONSTER
+  ALIEN
+  SPY
+  COOKING
+  ESCAPE_ROOM
+  SURVIVAL_HORROR
+  CULT_FAVORITE
+  DOCUMENTARY_FICTION
+  UNRELIABLE_NARRATOR
+  RANDOMIZED
+  EXTREME_SPORTS
+  DARK_COMEDY
+  TRAVEL
+  VINTAGE
+  FARM_LIFE
+  NATURE
+  HEROIC_FANTASY
+  LOVE_HATE
+  SLEEPY
+  POLITICAL_DRAMA
+  PARANORMAL_ROMANCE
+  LOVE_HURTS
+  GLOBAL
+  TRAILER
+}
+
+enum MediaType {
+  ANIME
+  MOVIE
+  MANGA
+  VIDEO
+  POLL
+  STORE
+  STORAGE
+}
+
+enum navItems {
+  OVERVIEW
+  DRIVE
+  VIDEOS
+  ANIME
+  MANGA
+  MOVIES
+  STORE
+  POLLS
+  STATS
+  SETTINGS
+}

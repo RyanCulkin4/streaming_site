@@ -1,0 +1,168 @@
+# ==== Code for Docker Compose ====
+
+# docker-compose up -d
+
+# === Clean up Docker ===
+# docker-compose down --volumes --remove-orphans
+#docker-compose build --no-cache
+
+# === Docker Commands ===
+
+# docker ps -> List running containers
+# docker-compose build -> Builds All images
+# docker-compose build #### -> Builds Specific Image
+# docker-compose up -d -> Start All Services
+# docker-compose up -d #### -> Start Specific Service
+
+version: "3.8"
+
+services:
+
+  # === FRONTEND DASHBOARD ===
+  web_server:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # prevents overwriting container's node_modules
+    networks:
+      - web
+    depends_on:
+      - api_gateway
+
+  managment_dashboard:
+    build: ./backend/managment-dashboard
+    ports:
+      - "9103:9103"
+    networks:
+      - backend
+    depends_on:
+      - api_gateway
+      - auth_service
+      - sql_service
+      - storage_service
+      - worker_service
+      - cache_service
+      - prometheus
+      - grafana
+      - loki
+
+  # === BACKEND SERVICES ===
+  api_gateway:
+    build: ./backend/api_gateway
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend/api_gateway:/app
+      - /app/node_modules
+    networks:
+      - web
+      - backend
+
+  auth_service:
+    build: ./backend/auth_service
+    ports:
+      - "3101:3101"
+    networks:
+      - backend
+
+  sql_service:
+    image: postgres:15
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: sql_web_server
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "3104:3104"   # Updated to match host and container
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  prisma_service:
+    build: ./backend/sql_service
+    depends_on:
+      sql_service:
+        condition: service_healthy
+    networks:
+      - backend
+
+  storage_service:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports:
+      - "3105:3105"   # API (S3-compatible API, unified port now)
+      - "9001:9001"   # Admin Console stays separate
+    volumes:
+      - minio_data:/data
+    networks:
+      - backend
+
+  worker_service:
+    build: ./backend/worker_service
+    depends_on:
+      - cache_service
+      - storage_service
+    ports:
+      - "3106:3106"
+    networks:
+      - backend
+
+  cache_service:
+    image: redis:alpine
+    ports:
+      - "3102:3102"
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./backend/logging_service/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9091:9091"
+    networks:
+      - backend
+
+  grafana:
+    image: grafana/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "9092:9092"
+    depends_on:
+      - prometheus
+    networks:
+      - backend
+
+  loki:
+    image: grafana/loki:2.9.0
+    command: -config.file=/etc/loki/loki-config.yaml
+    volumes:
+      - ./backend/logging_service/loki-config.yaml:/etc/loki/loki-config.yaml
+    ports:
+      - "3103:3103"
+    networks:
+      - backend
+
+networks:
+  web:
+  backend:
+
+volumes:
+  postgres_data:
+  minio_data:
+  redis_data:
