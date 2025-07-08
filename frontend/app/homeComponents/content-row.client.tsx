@@ -66,7 +66,7 @@ export default function ContentRow({ content }: { content?: ContentRowType }) {
     };
 
     return (
-      <div className="relative group">
+      <div className="relative group pl-5">
         <h2 className="text-xl md:text-2xl font-bold mb-4 text-white">
           {content.displayTitle}
         </h2>

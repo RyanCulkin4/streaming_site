@@ -2,7 +2,6 @@
 
 import { use } from "react";
 import {
-  ChevronRight,
   Newspaper,
   CalendarDays,
   Clock,
@@ -37,17 +36,8 @@ export default function SiteNewsContent({
   }
 
   return (
-    <section
-      id="news"
-      className="px-6 md:px-12 lg:px-24 py-16 bg-gradient-to-b from-indigo-950 to-purple-950 min-h-screen snap-start snap-always flex flex-col justify-center relative"
-    >
-      <div className="absolute top-16 left-0 right-0 flex justify-center">
-        <a href="#hero" className="animate-bounce">
-          <ChevronRight className="h-8 w-8 -rotate-90 text-white/70 hover:text-white" />
-        </a>
-      </div>
-
-      <div className="max-w-6xl mx-auto">
+    <>
+      <div className="max-w-6xl mx-auto mt-24">
         <div className="flex items-center justify-center mb-10">
           <Newspaper className="h-8 w-8 text-pink-500 mr-3" />
           <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">
@@ -95,7 +85,7 @@ export default function SiteNewsContent({
             ))}
           </div>
 
-          <div className="mt-10">
+          <div className="mt-10 mb-12">
             <div className="flex items-center mb-4">
               <AlertTriangle className="h-5 w-5 text-amber-500 mr-2" />
               <h3 className="text-xl font-bold text-white">
@@ -127,98 +117,6 @@ export default function SiteNewsContent({
           </div>
         </div>
       </div>
-
-      <div className="mt-12 pt-8 border-t border-purple-800">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
-          <div className="space-y-2">
-            <h4 className="text-white font-semibold mb-2">Company</h4>
-            <a
-              href="#"
-              className="block text-gray-300 hover:text-pink-400 transition-colors"
-            >
-              About Us
-            </a>
-            <a
-              href="#"
-              className="block text-gray-300 hover:text-pink-400 transition-colors"
-            >
-              Careers
-            </a>
-            <a
-              href="#"
-              className="block text-gray-300 hover:text-pink-400 transition-colors"
-            >
-              Press
-            </a>
-          </div>
-          <div className="space-y-2">
-            <h4 className="text-white font-semibold mb-2">Resources</h4>
-            <a
-              href="#"
-              className="block text-gray-300 hover:text-pink-400 transition-colors"
-            >
-              Help Center
-            </a>
-            <a
-              href="#"
-              className="block text-gray-300 hover:text-pink-400 transition-colors"
-            >
-              Accessibility
-            </a>
-            <a
-              href="#"
-              className="block text-gray-300 hover:text-pink-400 transition-colors"
-            >
-              Guidelines
-            </a>
-          </div>
-          <div className="space-y-2">
-            <h4 className="text-white font-semibold mb-2">Legal</h4>
-            <a
-              href="#"
-              className="block text-gray-300 hover:text-pink-400 transition-colors"
-            >
-              Terms of Service
-            </a>
-            <a
-              href="#"
-              className="block text-gray-300 hover:text-pink-400 transition-colors"
-            >
-              Privacy Policy
-            </a>
-            <a
-              href="#"
-              className="block text-gray-300 hover:text-pink-400 transition-colors"
-            >
-              Cookie Settings
-            </a>
-          </div>
-          <div className="space-y-2">
-            <h4 className="text-white font-semibold mb-2">Partners</h4>
-            <a
-              href="#"
-              className="block text-gray-300 hover:text-pink-400 transition-colors"
-            >
-              Advertisers
-            </a>
-            <a
-              href="#"
-              className="block text-gray-300 hover:text-pink-400 transition-colors"
-            >
-              Developers
-            </a>
-            <a
-              href="#"
-              className="block text-gray-300 hover:text-pink-400 transition-colors"
-            >
-              Investors
-            </a>
-          </div>
-        </div>
-        <p className="text-center text-gray-400 text-xs mt-8">
-          © 2023 AnimeVerse. All rights reserved.
-        </p>
-      </div>
-    </section>
+    </>
   );
 }

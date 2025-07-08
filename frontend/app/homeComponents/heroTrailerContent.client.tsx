@@ -137,10 +137,7 @@ export default function HomeTrailer({ showsPromise }: HomeTrailerProps) {
     const currentShow = shows[displayIndex];
 
   return (
-    <section
-      id="hero"
-      className="relative h-screen w-full snap-start snap-always"
-    >
+    <>
       <div className="relative h-full w-full overflow-hidden">
         {/* Background & fade */}
         <div
@@ -270,11 +267,6 @@ export default function HomeTrailer({ showsPromise }: HomeTrailerProps) {
           ))}
         </div>
       </div>
-      <div className="absolute bottom-8 left-0 right-0 flex justify-center">
-        <a href="#browse" className="animate-bounce">
-          <ChevronRight className="h-8 w-8 rotate-90 text-white/70 hover:text-white" />
-        </a>
-      </div>
-    </section>
+    </>
   );
 }
