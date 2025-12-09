@@ -14,18 +14,27 @@
 # docker-compose up -d -> Start All Services
 # docker-compose up -d #### -> Start Specific Service
 
-version: "3.8"
-
 services:
 
   # === FRONTEND DASHBOARD ===
   web_server:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
+    environment:
+      # makes file watching reliable on Windows
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_CACHE_DIR: "/app/.next/cache"
     volumes:
-      - ./frontend:/app
-      - /app/node_modules # prevents overwriting container's node_modules
+      - ./frontend:/app # live code
+      - web_node_modules:/app/node_modules # keep deps inside container
+      - web_next_cache:/app/.next/cache # persist Next cache (faster refresh)
+    command: >
+      sh -lc "test -d node_modules/next || npm ci && npm run dev"
     networks:
       - web
     depends_on:
@@ -47,37 +56,46 @@ services:
       - prometheus
       - grafana
       - loki
-
   # === BACKEND SERVICES ===
   api_gateway:
-    build: ./backend/api_gateway
+    build:
+      context: ./backend/api_gateway
+      dockerfile: Dockerfile
     ports:
       - "3001:3001"
+    environment:
+      # helps change detection on Windows/WSL
+      CHOKIDAR_USEPOLLING: "true"
     volumes:
-      - ./backend/api_gateway:/app
-      - /app/node_modules
+      - ./backend/api_gateway:/app # live code
+      - api_gateway_node_modules:/app/node_modules # keep deps inside container
+    command: >
+      sh -lc "test -d node_modules/fastify || npm ci && npm run dev"
     networks:
       - web
       - backend
 
   auth_service:
     build: ./backend/auth_service
+    environment:
+      PORT: "3101" # Your Fastify service will bind to 3101
     ports:
       - "3101:3101"
-    networks:
-      - backend
+    networks: [ backend ]
+    command: [ "npm", "run", "dev" ]
 
   sql_service:
-    image: postgres:15
+    image: postgres:18
     restart: always
+    # NOTE: mount at /var/lib/postgresql (18+ recommendation)
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     environment:
-      POSTGRES_DB: sql_web_server
+      POSTGRES_DB: KokoroTV
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "3104:3104"   # Updated to match host and container
+      - "3104:5432"
     networks:
       - backend
     healthcheck:
@@ -85,6 +103,23 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@kokoro.com
+      PGADMIN_DEFAULT_PASSWORD: kokoro
+    ports:
+      - "5050:80"
+    depends_on:
+      - sql_service
+    networks:
+      - backend
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./backend/logging_service/pgadmin/servers.json:/pgadmin4/servers.json:ro
+
 
   prisma_service:
     build: ./backend/sql_service
@@ -100,30 +135,77 @@ services:
     environment:
       MINIO_ROOT_USER: minio
       MINIO_ROOT_PASSWORD: minio123
+    # FIX: MinIO API is 9000; console is 9001
     ports:
-      - "3105:3105"   # API (S3-compatible API, unified port now)
-      - "9001:9001"   # Admin Console stays separate
+      - "3105:9000" # S3 API
+      - "9001:9001" # Console
     volumes:
       - minio_data:/data
-    networks:
-      - backend
+    networks: [ backend ]
 
   worker_service:
     build: ./backend/worker_service
     depends_on:
       - cache_service
       - storage_service
-    ports:
-      - "3106:3106"
-    networks:
-      - backend
+    # Celery should run in foreground and stay up
+    command: [ "celery", "-A", "worker.celery_app", "worker", "-l", "info", "--pool", "prefork" ]
+    environment:
+      CELERY_BROKER_URL: "redis://cache_service:6379/0"
+      CELERY_RESULT_BACKEND: "redis://cache_service:6379/1"
+    # (Usually no port needed; expose only if you run a metrics port)
+    networks: [ backend ]
+    restart: unless-stopped
 
   cache_service:
     image: redis:alpine
+    # FIX: Redis listens on 6379 in container
     ports:
-      - "3102:3102"
+      - "3102:6379"
     volumes:
       - redis_data:/data
+    networks: [ backend ]
+
+  loki:
+    image: grafana/loki:2.9.0
+    command: -config.file=/etc/loki/loki-config.yaml
+    # DEV convenience: run as root to avoid permissions friction
+    user: "0:0"
+    volumes:
+      - ./backend/logging_service/loki-config.yaml:/etc/loki/loki-config.yaml
+      - loki_data:/loki
+      - loki_wal:/wal
+    ports:
+      - "3103:3100" # host:container
+    networks:
+      - backend
+
+  promtail:
+    image: grafana/promtail:2.9.0
+    command: -config.file=/etc/promtail/promtail-config.yaml
+    volumes:
+      - ./backend/logging_service/promtail-config.yaml:/etc/promtail/promtail-config.yaml
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - backend
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    # provision Loki automatically
+    volumes:
+      - ./backend/logging_service/grafana-datasource-loki.yaml:/etc/grafana/provisioning/datasources/loki.yaml
+    ports:
+      - "9092:3000" # host:container
+    depends_on:
+      - prometheus
+      - loki
     networks:
       - backend
 
@@ -132,29 +214,7 @@ services:
     volumes:
       - ./backend/logging_service/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
-      - "9091:9091"
-    networks:
-      - backend
-
-  grafana:
-    image: grafana/grafana
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    ports:
-      - "9092:9092"
-    depends_on:
-      - prometheus
-    networks:
-      - backend
-
-  loki:
-    image: grafana/loki:2.9.0
-    command: -config.file=/etc/loki/loki-config.yaml
-    volumes:
-      - ./backend/logging_service/loki-config.yaml:/etc/loki/loki-config.yaml
-    ports:
-      - "3103:3103"
+      - "9091:9090"
     networks:
       - backend
 
@@ -162,7 +222,15 @@ networks:
   web:
   backend:
 
+
 volumes:
   postgres_data:
   minio_data:
   redis_data:
+  loki_data:
+  loki_wal:
+  web_node_modules:
+  web_next_cache:
+  api_gateway_node_modules:
+  pgadmin_data:
+

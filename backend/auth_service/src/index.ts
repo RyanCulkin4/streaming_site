@@ -1,5 +1,5 @@
 import Fastify from 'fastify';
-import fastifyJwt from 'fastify-jwt';
+import fastifyJwt from '@fastify/jwt';
 
 const app = Fastify();
 

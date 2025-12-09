@@ -1,18 +1,18 @@
 FROM python:3.11-slim
 
+ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
 
-# Install OS-level tools
-RUN apt-get update && \
-    apt-get install -y ffmpeg && \
-    apt-get clean
+# ffmpeg runtime for transcode tasks
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Install Python deps
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip wheel \
+ && pip install --no-cache-dir -r requirements.txt
 
-# Copy the code
-COPY . .
+# Copy worker code
+COPY worker ./worker
 
-# Run the Celery worker
-CMD ["celery", "-A", "celery_worker.celery", "worker", "--loglevel=info"]
+# Default command is provided from docker-compose 'command'

@@ -1,3 +1,7 @@
+// ------------------------
+// Prisma schema for KokoroTV
+// ------------------------
+
 generator client {
   provider = "prisma-client-js"
   output   = "../../../shared/prisma_client"
@@ -5,7 +9,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Anime {
@@ -22,11 +25,14 @@ model Anime {
   anime_ratings    Int          @default(0)
   age_rating       AgeRating    @default(G)
   mangaid          String?
-  title            String
+  engTitle         String
+  japaneseTitle    String
   type             MediaType    @default(ANIME)
   MediaGenre       MediaGenre[]
   anime_key_visual String?      @default("")
   visible          Boolean      @default(false)
+  status           String
+  nextSeason       String
 
   // Existing Relations
   Manga         Manga?          @relation(fields: [mangaid], references: [mangaid], onDelete: NoAction, onUpdate: NoAction, map: "anime_media_id_reference_fkey")
@@ -252,6 +258,8 @@ model Movies {
 model Polls {
   pollid      Int       @id @default(autoincrement())
   author      String
+  totalVotes  Int        @default(0)
+  options     PollOption[]
   title       String    @db.VarChar(255)
   description String
   likes       BigInt    @default(0)
@@ -420,14 +428,61 @@ model Videos {
   Users        Users        @relation(fields: [authorid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
 }
 
-model Website_Variables {
-  website_version     String      @id
-  footer_items        String[]
-  footer_separator    String?     @db.VarChar(1)
-  important_info      String?
-  rootContentPath     String?     @default("public/content")
-  loggedin_nav_items  MediaType[]
-  loggedout_nav_items MediaType[]
+// These are flexible "site variables" that can store misc config.
+model SiteVariable {
+  id          String  @id @default(uuid())
+  key         String  @unique
+  value       String?
+}
+
+model VideoJob {
+  id          String   @id @default(uuid())
+  filename    String
+  status      JobStatus
+  progress    Float
+  submittedAt DateTime  @default(now())
+  finishedAt  DateTime?
+
+  @@index([status])
+}
+
+
+model PollOption {
+  id       Int        @id @default(autoincrement())
+  text     String
+  votes    Int        @default(0)
+  pollId   Int
+  poll     Polls   @relation(fields: [pollId], references: [pollid])
+}
+
+/*model Comment {
+  id         Int          @id @default(autoincrement())
+  text       String
+  likes      Int          @default(0)
+  dislikes   Int          @default(0)
+  parentId   Int?
+  replies    Comment[]    @relation("CommentReplies", fields: [parentId], references: [id])
+  authorId   String
+  authorUser String
+  authorPfp  String
+  pollId     Int?
+  poll       Polls?    @relation(fields: [pollId], references: [pollid])
+}
+*/
+model SiteNews {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  date        DateTime  @default(now())
+  type        NewsType
+  link        String
+}
+
+model Maintenance {
+  id          String    @id @default(uuid())
+  date        String
+  time        String
+  description String
 }
 
 enum FileType {
@@ -595,6 +650,8 @@ enum MediaType {
   POLL
   STORE
   STORAGE
+  OVA
+  SPECIAL
 }
 
 enum navItems {
@@ -608,4 +665,24 @@ enum navItems {
   POLLS
   STATS
   SETTINGS
+}
+
+enum JobStatus {
+  queued
+  processing
+  completed
+  failed
+}
+
+enum ContentStatus {
+  ongoing
+  completed
+  upcoming
+}
+
+enum NewsType {
+  announcement
+  maintenance
+  feature
+  event
 }

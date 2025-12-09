@@ -1,20 +1,14 @@
-# Use the official Node.js image as the base image
-FROM node:20
-
-# Set the working directory in the container
+# syntax=docker/dockerfile:1
+FROM node:20-alpine
 WORKDIR /app
 
-# Copy package.json and package-lock.json to the working directory
+ENV NODE_ENV=development
+# Install deps (includes devDependencies so Next is present)
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
 
-# Copy the rest of the application code to the working directory
+# Optional: copy source so first boot works even before the mount
 COPY . .
 
-# Expose the port the app runs on
 EXPOSE 3000
-
-# Start the Next.js application
-CMD ["npm", "run", "dev"]
+CMD ["npm","run","dev"]   # next dev --turbopack in your package.json

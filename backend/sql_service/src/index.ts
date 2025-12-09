@@ -1,15 +1,14 @@
 import Fastify from 'fastify';
-import pg from 'pg';
+import { Pool } from 'pg';
 
-const { Pool } = pg;
 const fastify = Fastify();
-const PORT = 3104;
+const PORT = 3104 | 5432;
 
 const pool = new Pool({
   host: 'sql_service',       // or your internal Docker hostname
   port: PORT,
-  user: 'postrgres',
-  password: 'postrgres',
+  user: 'postgres',
+  password: 'postgres',
   database: 'sql_web_server',
 });
 

@@ -1,0 +1,14 @@
+{
+  "US_East_Florida": {
+    "1": {
+      "Name": "KokoroTV Database",
+      "Group": "US_East_Florida",
+      "Host": "sql_service",
+      "Port": 5432,
+      "MaintenanceDB": "sql_web_server",
+      "Username": "postgres",
+      "SSLMode": "prefer",
+      "Comment": "Internal PostgreSQL for Docker Compose"
+    }
+  }
+}

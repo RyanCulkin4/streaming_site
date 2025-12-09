@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Play, Heart, Github, Twitter, DiscIcon as Discord } from "lucide-react"
+import { Play, Heart, Github, Twitter, DiscIcon as Discord, Star } from "lucide-react"
 
 export default function Footer() {
   return (
@@ -9,12 +9,12 @@ export default function Footer() {
           {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-violet-500 rounded-lg flex items-center justify-center">
-                <Play className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-violet-400">
-                AnimeVerse
-              </span>
+              <Link href="/" className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg">
+                  <Star className="h-6 w-6 text-primary-foreground fill-current" />
+                </div>
+                <span className="text-2xl font-bold text-foreground tracking-tight">KokoroTV</span>
+              </Link>
             </div>
             <p className="text-gray-400 text-sm">
               Your ultimate destination for anime, manga, and Japanese culture. Stream, discover, and connect with

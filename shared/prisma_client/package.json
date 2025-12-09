@@ -99,5 +99,10 @@
     "./*": "./*"
   },
   "version": "6.5.0",
-  "sideEffects": false
+  "sideEffects": false,
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.1.0",
+    "@prisma/client": "^7.1.0",
+    "prisma": "^7.1.0"
+  }
 }

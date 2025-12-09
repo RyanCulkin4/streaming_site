@@ -1,5 +1,6 @@
 import {
   AnimeDataType,
+  AnimePageDataType,
   carouselShowsType,
   ContentItem,
   ContentRowType,
@@ -10,7 +11,6 @@ import {
   UserPollsType,
 } from "@shared-types/*";
 import Fastify from "fastify";
-import fetch from "node-fetch";
 import cors from "@fastify/cors";
 
 const fastify = Fastify({ logger: true });
@@ -88,121 +88,72 @@ fastify.get("/api/home/carouselShows", async (request, reply) => {
 
 fastify.get("/api/content/popularAnime", async (request, reply) => {
   const items: ContentItem[] = [
-    {
-      id: 1,
+     {
+      id: "pa1",
       title: "Attack on Titan",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Hajime Isayama",
-      rating: 9.1,
+      image: "/attack-on-titan-hero.jpg",
+      rating: 9.8,
       year: "2013",
+      studio: "Wit Studio",
+      episodes: 87,
+      status: "completed",
+      releaseDate: "April 7, 2013",
       genres: ["Action", "Drama", "Fantasy"],
     },
     {
-      id: 2,
+      id: "pa2",
       title: "My Hero Academia",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Kohei Horikoshi",
-      rating: 8.0,
-      year: "2016",
-      genres: ["Action", "Superhero"],
-    },
-    {
-      id: 3,
-      title: "Jujutsu Kaisen",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Gege Akutami",
-      rating: 8.6,
-      year: "2020",
-      genres: ["Action", "Horror", "Supernatural"],
-    },
-    {
-      id: 4,
-      title: "One Piece",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Eiichiro Oda",
-      rating: 9.0,
-      year: "1999",
-      genres: ["Adventure", "Comedy", "Fantasy"],
-    },
-    {
-      id: 5,
-      title: "Chainsaw Man",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Tatsuki Fujimoto",
-      rating: 8.5,
-      year: "2022",
-      genres: ["Action", "Horror", "Dark Fantasy"],
-    },
-    {
-      id: 6,
-      title: "Spy x Family",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Tatsuya Endo",
+      image: "/placeholder.svg?height=400&width=300",
       rating: 8.4,
+      year: "2016",
+      studio: "Bones",
+      episodes: 113,
+      status: "ongoing",
+      nextEpisode: "Next: S7 E5 - Saturday",
+      genres: ["Action", "Superhero", "School"],
+    },
+    {
+      id: "pa3",
+      title: "One Piece",
+      image: "/placeholder.svg?height=400&width=300",
+      rating: 8.9,
+      year: "1999",
+      studio: "Toei Animation",
+      episodes: 1000,
+      status: "ongoing",
+      nextEpisode: "Next: E1095 - Sunday",
+      genres: ["Adventure", "Action", "Fantasy"],
+    },
+    {
+      id: "pa4",
+      title: "Spy x Family",
+      image: "/placeholder.svg?height=400&width=300",
+      rating: 8.7,
       year: "2022",
+      studio: "Wit Studio",
+      episodes: 25,
+      status: "ongoing",
+      nextEpisode: "Next: S2 E8 - Next week",
       genres: ["Comedy", "Action", "Slice of Life"],
     },
-  ];
-
+    {
+      id: "pa5",
+      title: "Chainsaw Man",
+      image: "/placeholder.svg?height=400&width=300",
+      rating: 8.6,
+      year: "2022",
+      studio: "MAPPA",
+      episodes: 12,
+      status: "completed",
+      releaseDate: "October 11, 2022",
+      genres: ["Action", "Horror", "Supernatural"],
+    },
+  ]
   return { displayTitle: "Popular Anime", items } as ContentRowType;
 });
 
 fastify.get("/api/content/popularMovies", async (request, reply) => {
   const items: ContentItem[] = [
-    {
-      id: 19,
-      title: "Your Name",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Makoto Shinkai",
-      rating: 8.9,
-      year: "2016",
-      genres: ["Romance", "Fantasy", "Drama"],
-    },
-    {
-      id: 20,
-      title: "Spirited Away",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Hayao Miyazaki",
-      rating: 9.2,
-      year: "2001",
-      genres: ["Fantasy", "Adventure", "Family"],
-    },
-    {
-      id: 21,
-      title: "Demon Slayer: Mugen Train",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Koyoharu Gotouge",
-      rating: 8.7,
-      year: "2020",
-      genres: ["Action", "Adventure", "Supernatural"],
-    },
-    {
-      id: 22,
-      title: "Princess Mononoke",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Hayao Miyazaki",
-      rating: 8.4,
-      year: "1997",
-      genres: ["Fantasy", "Adventure", "War"],
-    },
-    {
-      id: 23,
-      title: "Akira",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Katsuhiro Otomo",
-      rating: 8.0,
-      year: "1988",
-      genres: ["Sci-Fi", "Action", "Cyberpunk"],
-    },
-    {
-      id: 24,
-      title: "Howl's Moving Castle",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Diana Wynne Jones",
-      rating: 8.2,
-      year: "2004",
-      genres: ["Fantasy", "Romance", "Adventure"],
-    },
   ];
 
   return { displayTitle: "Popular Movies", items } as ContentRowType;;
@@ -210,60 +161,7 @@ fastify.get("/api/content/popularMovies", async (request, reply) => {
 
 fastify.get("/api/content/trendingManga", async (request, reply) => {
   const items: ContentItem[] = [
-    {
-      id: 7,
-      title: "Berserk",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Kentaro Miura",
-      rating: 9.3,
-      year: "1989",
-      genres: ["Dark Fantasy", "Action", "Horror"],
-    },
-    {
-      id: 8,
-      title: "Vagabond",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Takehiko Inoue",
-      rating: 9.1,
-      year: "1998",
-      genres: ["Historical", "Samurai", "Seinen"],
-    },
-    {
-      id: 9,
-      title: "Vinland Saga",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Makoto Yukimura",
-      rating: 8.8,
-      year: "2005",
-      genres: ["Action", "Adventure", "Historical"],
-    },
-    {
-      id: 10,
-      title: "Tokyo Ghoul",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Sui Ishida",
-      rating: 8.0,
-      year: "2011",
-      genres: ["Horror", "Action", "Supernatural"],
-    },
-    {
-      id: 11,
-      title: "One Punch Man",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "ONE",
-      rating: 8.5,
-      year: "2012",
-      genres: ["Action", "Comedy", "Superhero"],
-    },
-    {
-      id: 12,
-      title: "Demon Slayer",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Koyoharu Gotouge",
-      rating: 8.4,
-      year: "2016",
-      genres: ["Action", "Supernatural", "Adventure"],
-    },
+   
   ];
 
   return { displayTitle: "Trending Manga", items } as ContentRowType;;
@@ -271,60 +169,7 @@ fastify.get("/api/content/trendingManga", async (request, reply) => {
 
 fastify.get("/api/content/continueWatching", async (request, reply) => {
   const items: ContentItem[] = [
-    {
-      id: 13,
-      title: "Naruto Shippuden",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Masashi Kishimoto",
-      rating: 8.3,
-      year: "2007",
-      genres: ["Action", "Adventure", "Ninja"],
-    },
-    {
-      id: 14,
-      title: "Hunter x Hunter",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Yoshihiro Togashi",
-      rating: 9.0,
-      year: "2011",
-      genres: ["Adventure", "Fantasy", "Action"],
-    },
-    {
-      id: 15,
-      title: "Fullmetal Alchemist",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Hiromu Arakawa",
-      rating: 9.2,
-      year: "2009",
-      genres: ["Action", "Fantasy", "Adventure"],
-    },
-    {
-      id: 16,
-      title: "Death Note",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Tsugumi Ohba",
-      rating: 8.7,
-      year: "2006",
-      genres: ["Mystery", "Psychological", "Thriller"],
-    },
-    {
-      id: 17,
-      title: "Cowboy Bebop",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Shinichirō Watanabe",
-      rating: 8.9,
-      year: "1998",
-      genres: ["Sci-Fi", "Action", "Space"],
-    },
-    {
-      id: 18,
-      title: "Neon Genesis Evangelion",
-      image: "/placeholder.svg?height=400&width=600",
-      author: "Hideaki Anno",
-      rating: 8.1,
-      year: "1995",
-      genres: ["Mecha", "Psychological", "Drama"],
-    },
+   
   ];
 
   return { displayTitle: "Continue Watching", items } as ContentRowType;;
@@ -610,6 +455,34 @@ fastify.get("/api/content/animedata/:animeid", async (request, reply) => {
     averageDuration: 24,
   };
   return animeData;
+});
+
+fastify.get("/api/content/anime", async (request, reply) => {
+  const animeData: AnimePageDataType[] = [{
+    id: '0',
+    title: "Oshi no Ko",
+    description: "Dr. Gorou Amemiya, an obstetrician, is a huge fan of the talented teen idol Ai Hoshino. When Ai gives birth to twins, Gorou discovers the dark side of the entertainment industry. After a tragic incident, he is reborn as one of Ai's children with his memories intact, and vows to find the truth behind what happened and protect his new family.",
+    thumbnailUrl: "/placeholder.svg?height=225&width=150&text=Oshi%20no%20Ko",
+    averageRating: 9.2,
+    isBookmarked: false,
+    releaseYear: "2023",
+    studio: "Doga Kobo",
+    episodes: 11,
+    genres: ["Drama", "Supernatural", "Psychological", "Mystery"],
+  },
+  {
+    id: '1',
+    title: "Jujutsu Kaisen",
+    description: "In a world where cursed spirits feed on unsuspecting humans, the only thing standing between them and total domination are Jujutsu Sorcerers, who use their own cursed energy to combat these malevolent forces.",
+    thumbnailUrl: "/placeholder.svg?height=225&width=150&text=Jujutsu%20Kaisen",
+    averageRating: 9.5,
+    isBookmarked: false,
+    releaseYear: "2020",
+    studio: "Doga Kobo",
+    episodes: 11,
+    genres: ["Drama", "Supernatural", "Psychological", "Mystery"],
+  }];
+  return animeData
 });
 
 /*try {

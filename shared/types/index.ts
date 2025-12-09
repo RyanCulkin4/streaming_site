@@ -27,13 +27,18 @@ export interface ContentRowType {
 }
 
 export interface ContentItem {
-  id: number
+  id: string
   title: string
   image: string
-  author: string
-  rating: number
-  year: string
-  genres: string[]
+  rating?: number
+  year?: string
+  type?: string
+  studio?: string
+  releaseDate?: string
+  nextEpisode?: string
+  genres?: string[]
+  episodes?: number
+  status?: "ongoing" | "completed" | "upcoming"
 }
 
 export interface UserPollsType {
@@ -91,7 +96,7 @@ export interface MaintenanceType {
 
 export interface SiteVariablesType {}
 
-// Loading Anime/[animeid] Page
+// Used in Anime/[animeid] Page
 export interface AnimeDataType { 
     id: string;
     engTtle: string;
@@ -109,4 +114,18 @@ export interface AnimeDataType {
     nextSeason: string;
     genres: string[];
     averageDuration: number; // Mionutes
+  };
+
+  // Used in app/anime page
+  export interface AnimePageDataType {
+    id: string;
+    title: string;
+    description: string;
+    thumbnailUrl: string;
+    averageRating: number;
+    isBookmarked: boolean;
+    releaseYear: string;
+    studio: string;
+    episodes: number;
+    genres: string[];
   };

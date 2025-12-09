@@ -1,14 +1,16 @@
+# syntax=docker/dockerfile:1
 FROM node:20
 
-# Set working directory
 WORKDIR /app
+ENV NODE_ENV=development
+ENV PORT=3101
 
-# Copy and install dependencies
+# Install deps (dev included) so ts-node/tsc are available
 COPY package*.json ./
 RUN npm install
 
-# Copy the rest of your code
+# Bring in source for initial build; bind mount will overwrite at runtime
 COPY . .
 
-# Start your service
-CMD ["npm", "start"]
+EXPOSE 3101
+CMD ["npm","run","dev"]   # ts-node src/index.ts

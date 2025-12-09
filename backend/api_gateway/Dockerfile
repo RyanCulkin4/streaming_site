@@ -1,11 +1,13 @@
-FROM node:20
-
+FROM node:20-alpine
 WORKDIR /app
 
-# Only install dependencies here; actual code comes from the volume
+ENV NODE_ENV=development
+
 COPY package*.json ./
 RUN npm install
 
-RUN npm install -D nodemon tsx typescript
+# copy source (bind mount will overwrite at runtime; this helps first boot)
+COPY . .
 
-CMD ["npm", "run", "dev"]
+EXPOSE 3001
+CMD ["npm","run","dev"]
